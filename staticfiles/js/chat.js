@@ -237,11 +237,15 @@ const Chat = (() => {
 
   function showTyping() {
     if (typingEl) typingEl.removeAttribute('hidden');
+    const avatar = document.querySelector('.robot-avatar-container');
+    if (avatar) avatar.classList.add('waiting');
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
   function hideTyping() {
     if (typingEl) typingEl.setAttribute('hidden', '');
+    const avatar = document.querySelector('.robot-avatar-container');
+    if (avatar) avatar.classList.remove('waiting');
   }
 
   function showTypingIndicator() { showTyping(); }

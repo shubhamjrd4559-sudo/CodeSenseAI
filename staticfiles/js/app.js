@@ -474,11 +474,25 @@ const App = (() => {
     let closeDropdownTimeout = null;
     let closePopoverTimeout = null;
 
-    function openDropdown() {
+    function updateProfileDropdown(user) {
+      const dropdownUsername = document.getElementById('dropdown-username');
+      const dropdownEmail = document.getElementById('dropdown-email');
+      const dropdownAvatar = document.getElementById('dropdown-avatar');
+      if (dropdownUsername) dropdownUsername.textContent = user.username || 'User';
+      if (dropdownEmail) dropdownEmail.textContent = user.email || '';
+      if (dropdownAvatar) dropdownAvatar.textContent = initials(user.username || user.email);
+    }
+
+    function openDropdown(triggerBtn) {
       if (!profileDropdown) return;
       if (closeDropdownTimeout) {
         clearTimeout(closeDropdownTimeout);
         closeDropdownTimeout = null;
+      }
+      const btnRect = (triggerBtn || saveHeaderBtn)?.getBoundingClientRect();
+      if (btnRect) {
+        profileDropdown.style.top  = (btnRect.bottom + 8) + 'px';
+        profileDropdown.style.left = btnRect.left + 'px';
       }
       profileDropdown.hidden = false;
       profileDropdown.offsetHeight; // force reflow
@@ -651,24 +665,15 @@ const App = (() => {
       const user = ApiClient.getUser();
       if (!user) return;
       
-      if (profileDropdown && profileDropdown.classList.contains('open')) {
+      if (profileDropdown && !profileDropdown.hidden) {
         closeDropdown();
       } else {
-        if (savePopover && savePopover.classList.contains('open')) {
-          closeSavePopover();
-        }
-        openDropdown();
+        openDropdown(userChip);
         renderSavedCodes();
         if (typeof Chat !== 'undefined' && Chat.renderChatSessions) {
           Chat.renderChatSessions();
         }
-        
-        const dropdownUsername = document.getElementById('dropdown-username');
-        const dropdownEmail = document.getElementById('dropdown-email');
-        const dropdownAvatar = document.getElementById('dropdown-avatar');
-        if (dropdownUsername) dropdownUsername.textContent = user.username || 'User';
-        if (dropdownEmail) dropdownEmail.textContent = user.email || '';
-        if (dropdownAvatar) dropdownAvatar.textContent = initials(user.username || user.email);
+        updateProfileDropdown(user);
       }
     });
 
@@ -685,7 +690,7 @@ const App = (() => {
       if (savePopover && savePopover.classList.contains('open')) {
         closeSavePopover();
       } else {
-        if (profileDropdown && profileDropdown.classList.contains('open')) {
+        if (profileDropdown && !profileDropdown.hidden) {
           closeDropdown();
         }
         openSavePopover();

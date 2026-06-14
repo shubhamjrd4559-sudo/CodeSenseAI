@@ -483,21 +483,40 @@ const App = (() => {
     let closeDropdownTimeout = null;
     let closePopoverTimeout = null;
 
-    function openDropdown() {
+    function updateProfileDropdown(user) {
+      const dropdownUsername = document.getElementById('dropdown-username');
+      const dropdownEmail = document.getElementById('dropdown-email');
+      const dropdownAvatar = document.getElementById('dropdown-avatar');
+      if (dropdownUsername) dropdownUsername.textContent = user.username || 'User';
+      if (dropdownEmail) dropdownEmail.textContent = user.email || '';
+      if (dropdownAvatar) dropdownAvatar.textContent = initials(user.username || user.email);
+    }
+
+    function openDropdown(triggerBtn) {
       if (!profileDropdown) return;
-      // Position below the Save button
-      const btnRect = saveHeaderBtn ? saveHeaderBtn.getBoundingClientRect() : null;
+      if (closeDropdownTimeout) {
+        clearTimeout(closeDropdownTimeout);
+        closeDropdownTimeout = null;
+      }
+      const btnRect = (triggerBtn || saveHeaderBtn)?.getBoundingClientRect();
       if (btnRect) {
         profileDropdown.style.top  = (btnRect.bottom + 8) + 'px';
         profileDropdown.style.left = btnRect.left + 'px';
       }
       profileDropdown.hidden = false;
+      profileDropdown.offsetHeight; // force reflow
+      profileDropdown.classList.add('open');
     }
 
     function closeDropdown() {
       if (!profileDropdown) return;
-      profileDropdown.hidden = true;
       profileDropdown.classList.remove('open');
+      if (closeDropdownTimeout) clearTimeout(closeDropdownTimeout);
+      closeDropdownTimeout = setTimeout(() => {
+        if (!profileDropdown.classList.contains('open')) {
+          profileDropdown.hidden = true;
+        }
+      }, 250);
     }
 
     function openSavePopover() {
@@ -661,28 +680,45 @@ const App = (() => {
         }
         return;
       }
-      
+
       if (profileDropdown && !profileDropdown.hidden) {
         closeDropdown();
       } else {
-        openDropdown();
+        openDropdown(saveHeaderBtn);
         renderSavedCodes();
         if (typeof Chat !== 'undefined' && Chat.renderChatSessions) {
           Chat.renderChatSessions();
         }
-        const dropdownUsername = document.getElementById('dropdown-username');
-        const dropdownEmail = document.getElementById('dropdown-email');
-        const dropdownAvatar = document.getElementById('dropdown-avatar');
-        if (dropdownUsername) dropdownUsername.textContent = user.username || 'User';
-        if (dropdownEmail) dropdownEmail.textContent = user.email || '';
-        if (dropdownAvatar) dropdownAvatar.textContent = initials(user.username || user.email);
+        updateProfileDropdown(user);
+      }
+    });
+
+    userChip?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const user = ApiClient.getUser();
+      if (!user) {
+        if (typeof window._showLoginModal === 'function') {
+          window._showLoginModal();
+        }
+        return;
+      }
+      if (profileDropdown && !profileDropdown.hidden) {
+        closeDropdown();
+      } else {
+        openDropdown(userChip);
+        renderSavedCodes();
+        if (typeof Chat !== 'undefined' && Chat.renderChatSessions) {
+          Chat.renderChatSessions();
+        }
+        updateProfileDropdown(user);
       }
     });
 
     document.addEventListener('click', (e) => {
       if (profileDropdown && !profileDropdown.hidden) {
         if (!profileDropdown.contains(e.target) &&
-            e.target !== saveHeaderBtn && !saveHeaderBtn?.contains(e.target)) {
+            e.target !== saveHeaderBtn && !saveHeaderBtn?.contains(e.target) &&
+            e.target !== userChip && !userChip?.contains(e.target)) {
           closeDropdown();
         }
       }
@@ -816,6 +852,9 @@ const App = (() => {
       if (authStatus) authStatus.textContent = signedIn
         ? `Signed in as ${user.email || user.username || 'user'}`
         : 'Guest workspace';
+      if (signedIn && user) {
+        updateProfileDropdown(user);
+      }
       if (!signedIn) {
         updateActiveFileUI(null);
         if (profileDropdown) {

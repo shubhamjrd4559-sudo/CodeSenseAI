@@ -1026,6 +1026,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.robot-avatar-container.waiting {
   animation: robot-float 3s ease-in-out infinite;
 }
 

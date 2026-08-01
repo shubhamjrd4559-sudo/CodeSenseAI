@@ -178,25 +178,34 @@ const App = (() => {
       const line = outLines[i];
       const trimmed = line.trimEnd();
 
-      // Detect input prompt: line ending with ':' or '?' (with optional spaces)
-      const isPrompt = /[:?]\s*$/.test(trimmed);
+      // Skip trailing blank line
+      if (!trimmed && i === outLines.length - 1) continue;
 
-      if (isPrompt && stdinIdx < stdinLines.length) {
-        // Check if this prompt line had a newline after it in rawStdout
-        const hasNewline = i < outLines.length - 1;
-        if (hasNewline) {
-          // Render prompt on its own line, and stdin echo on its own line below it
-          rendered.push(`<span class="terminal-line">${esc(line)}</span>`);
-          rendered.push(`<span class="terminal-line output-stdin-echo">${esc(stdinLines[stdinIdx++])}</span>`);
-        } else {
-          // Render prompt and stdin echo on the same line
+      if (stdinIdx < stdinLines.length) {
+        // Case 1: entire line ends with a prompt char  e.g.  "Enter n: "
+        if (/[:?]\s*$/.test(trimmed)) {
           rendered.push(
             `<span class="terminal-line">${esc(line)}<span class="output-stdin-echo">${esc(stdinLines[stdinIdx++])}</span></span>`
           );
+          continue;
         }
-      } else if (i < outLines.length - 1 || trimmed) {
-        rendered.push(`<span class="terminal-line">${esc(line)}</span>`);
+
+        // Case 2: prompt is INLINE — non-interactive run concatenated prompt + real output
+        // e.g.  stdout = "Enter n: 2 3 5 7 11"  (prompt + output on same line)
+        // Regex: short human-readable prompt ending with ": " or "? " followed by content
+        const inlineMatch = /^([A-Za-z][\w\s,.()\-]*?[:?]\s+)(.+)$/.exec(trimmed);
+        if (inlineMatch) {
+          const promptPart = inlineMatch[1];  // e.g. "Enter n: "
+          const outputPart = inlineMatch[2];  // e.g. "2 3 5 7 11"
+          rendered.push(
+            `<span class="terminal-line">${esc(promptPart)}<span class="output-stdin-echo">${esc(stdinLines[stdinIdx++])}</span></span>`
+          );
+          rendered.push(`<span class="terminal-line">${esc(outputPart)}</span>`);
+          continue;
+        }
       }
+
+      rendered.push(`<span class="terminal-line">${esc(line)}</span>`);
     }
 
     return rendered.join('\n');
@@ -603,8 +612,9 @@ const App = (() => {
       const user = ApiClient.getUser();
       if (!user) return;
       
-      const filename = saveFilenameInpPopover?.value.trim();
-      const description = saveDescriptionInpPopover?.value.trim() || '';
+      const filenameEl = document.getElementById('save-filename-input-popover');
+      const confirmBtn = document.getElementById('save-confirm-btn-popover');
+      const filename = filenameEl?.value.trim();
       
       if (!filename) {
         alert('Please enter a filename.');
@@ -614,9 +624,8 @@ const App = (() => {
       const code = typeof Editor !== 'undefined' ? Editor.getCode() : '';
       const language = document.getElementById('language-select')?.value || 'other';
       
-      const originalText = saveConfirmBtnPopover.textContent;
-      saveConfirmBtnPopover.disabled = true;
-      saveConfirmBtnPopover.textContent = 'Saving...';
+      const originalText = confirmBtn?.textContent || 'Save';
+      if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Saving...'; }
       
       setTimeout(() => {
         const key = `codesense_saved_files_${user.email}`;
@@ -633,7 +642,7 @@ const App = (() => {
         const fileObj = {
           id: existingIdx >= 0 ? saved[existingIdx].id : (fileId || Date.now().toString()),
           name: filename,
-          description: description,
+          description: '',
           code: code,
           language: language,
           timestamp: new Date().toLocaleString()
@@ -648,23 +657,51 @@ const App = (() => {
         localStorage.setItem(key, JSON.stringify(saved));
         updateActiveFileUI(fileObj);
         
-        saveConfirmBtnPopover.disabled = false;
-        saveConfirmBtnPopover.textContent = originalText;
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = originalText; }
         
         setStatus(`Saved "${filename}" successfully`, 'ready');
-        closeSavePopover();
+        renderSavedCodes();  // refresh list
+        closeDropdown();     // hide panel after save
         
         if (typeof Editor !== 'undefined' && typeof Editor.focus === 'function') {
           Editor.focus();
         }
-      }, 500);
+      }, 400);
     }
+
+    // User chip is now display-only — no click handler needed
+
+    saveHeaderBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const user = ApiClient.getUser();
+      if (!user) {
+        if (typeof window._showLoginModal === 'function') {
+          window._showLoginModal();
+        }
+        return;
+      }
+
+      if (profileDropdown && !profileDropdown.hidden) {
+        closeDropdown();
+      } else {
+        openDropdown(saveHeaderBtn);
+        renderSavedCodes();
+        if (typeof Chat !== 'undefined' && Chat.renderChatSessions) {
+          Chat.renderChatSessions();
+        }
+        updateProfileDropdown(user);
+      }
+    });
 
     userChip?.addEventListener('click', (e) => {
       e.stopPropagation();
       const user = ApiClient.getUser();
-      if (!user) return;
-      
+      if (!user) {
+        if (typeof window._showLoginModal === 'function') {
+          window._showLoginModal();
+        }
+        return;
+      }
       if (profileDropdown && !profileDropdown.hidden) {
         closeDropdown();
       } else {
@@ -677,37 +714,12 @@ const App = (() => {
       }
     });
 
-    saveHeaderBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const user = ApiClient.getUser();
-      if (!user) {
-        if (typeof window._showLoginModal === 'function') {
-          window._showLoginModal();
-        }
-        return;
-      }
-      
-      if (savePopover && savePopover.classList.contains('open')) {
-        closeSavePopover();
-      } else {
-        if (profileDropdown && !profileDropdown.hidden) {
-          closeDropdown();
-        }
-        openSavePopover();
-      }
-    });
-
     document.addEventListener('click', (e) => {
-      if (profileDropdown && profileDropdown.classList.contains('open')) {
-        if (!profileDropdown.contains(e.target) && 
-            e.target !== userChip && !userChip.contains(e.target)) {
+      if (profileDropdown && !profileDropdown.hidden) {
+        if (!profileDropdown.contains(e.target) &&
+            e.target !== saveHeaderBtn && !saveHeaderBtn?.contains(e.target) &&
+            e.target !== userChip && !userChip?.contains(e.target)) {
           closeDropdown();
-        }
-      }
-      if (savePopover && savePopover.classList.contains('open')) {
-        if (!savePopover.contains(e.target) && 
-            e.target !== saveHeaderBtn && !saveHeaderBtn?.contains(e.target)) {
-          closeSavePopover();
         }
       }
     });
@@ -840,6 +852,9 @@ const App = (() => {
       if (authStatus) authStatus.textContent = signedIn
         ? `Signed in as ${user.email || user.username || 'user'}`
         : 'Guest workspace';
+      if (signedIn && user) {
+        updateProfileDropdown(user);
+      }
       if (!signedIn) {
         updateActiveFileUI(null);
         if (profileDropdown) {

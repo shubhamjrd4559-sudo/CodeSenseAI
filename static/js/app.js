@@ -503,7 +503,10 @@ const App = (() => {
       const btnRect = (triggerBtn || saveHeaderBtn)?.getBoundingClientRect();
       if (btnRect) {
         profileDropdown.style.top  = (btnRect.bottom + 8) + 'px';
-        profileDropdown.style.left = btnRect.left + 'px';
+        // Clamp left so dropdown never overflows right edge of viewport
+        const dropW = profileDropdown.offsetWidth || 300;
+        const maxLeft = window.innerWidth - dropW - 8;
+        profileDropdown.style.left = Math.min(btnRect.left, maxLeft) + 'px';
       }
       profileDropdown.hidden = false;
       profileDropdown.offsetHeight;
@@ -521,6 +524,8 @@ const App = (() => {
 
     // Backdrop click → close dropdown
     document.getElementById('dropdown-backdrop')?.addEventListener('click', () => closeDropdown());
+    // X button → close dropdown
+    document.getElementById('dropdown-close-btn')?.addEventListener('click', () => closeDropdown());
 
     function openSavePopover() {
       if (!savePopover) return;

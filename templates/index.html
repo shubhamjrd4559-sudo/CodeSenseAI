@@ -379,6 +379,9 @@
   <script src="{% static 'js/chat.js' %}"></script>
   <script src="{% static 'js/app.js' %}"></script>
 
+  <!-- Backdrop: click outside dropdown to close it -->
+  <div id="dropdown-backdrop" hidden style="position:fixed;inset:0;z-index:9998;"></div>
+
   <!-- Save Workspace Dropdown - body-level fixed overlay, never clipped -->
   <div id="profile-dropdown" hidden style="position:fixed;z-index:9999;width:300px;background:rgba(16,20,26,0.97);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.10);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);padding:14px;display:flex;flex-direction:column;gap:12px;">
     <div class="dropdown-profile-header">

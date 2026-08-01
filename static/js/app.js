@@ -492,6 +492,8 @@ const App = (() => {
       if (dropdownAvatar) dropdownAvatar.textContent = initials(user.username || user.email);
     }
 
+    const dropdownBackdrop = document.getElementById('dropdown-backdrop');
+
     function openDropdown(triggerBtn) {
       if (!profileDropdown) return;
       if (closeDropdownTimeout) {
@@ -504,20 +506,21 @@ const App = (() => {
         profileDropdown.style.left = btnRect.left + 'px';
       }
       profileDropdown.hidden = false;
-      profileDropdown.offsetHeight; // force reflow
+      profileDropdown.offsetHeight;
       profileDropdown.classList.add('open');
+      if (dropdownBackdrop) dropdownBackdrop.hidden = false;
     }
 
     function closeDropdown() {
       if (!profileDropdown) return;
       profileDropdown.classList.remove('open');
+      profileDropdown.hidden = true;
+      if (dropdownBackdrop) dropdownBackdrop.hidden = true;
       if (closeDropdownTimeout) clearTimeout(closeDropdownTimeout);
-      closeDropdownTimeout = setTimeout(() => {
-        if (!profileDropdown.classList.contains('open')) {
-          profileDropdown.hidden = true;
-        }
-      }, 250);
     }
+
+    // Backdrop click → close dropdown
+    document.getElementById('dropdown-backdrop')?.addEventListener('click', () => closeDropdown());
 
     function openSavePopover() {
       if (!savePopover) return;
@@ -714,15 +717,7 @@ const App = (() => {
       }
     });
 
-    document.addEventListener('click', (e) => {
-      if (profileDropdown && !profileDropdown.hidden) {
-        if (!profileDropdown.contains(e.target) &&
-            e.target !== saveHeaderBtn && !saveHeaderBtn?.contains(e.target) &&
-            e.target !== userChip && !userChip?.contains(e.target)) {
-          closeDropdown();
-        }
-      }
-    });
+    // Outside-click handled by backdrop — no document listener needed
 
     saveCancelBtnPopover?.addEventListener('click', (e) => {
       e.stopPropagation();

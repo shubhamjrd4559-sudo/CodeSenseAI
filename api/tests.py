@@ -188,7 +188,7 @@ class LLMServiceTests(TestCase):
         self.assertEqual(payload['model'], 'fast-chat-model')
         self.assertEqual(payload['max_tokens'], 700)
 
-    @patch.dict('os.environ', {'XKIRO_API_KEY': 'xkiro-test-secret', 'XKIRO_MODEL': 'openai/gpt-5.6-sol'})
+    @patch.dict('os.environ', {'XKIRO_API_KEY': 'xkiro-test-secret', 'XKIRO_MODEL': 'qwen/qwen3.8-omni-flash:free'})
     @patch('api.services.ollama_service.requests.post')
     def test_chat_uses_xkiro_when_configured(self, mock_post):
         from api.services.ollama_service import chat
@@ -203,7 +203,7 @@ class LLMServiceTests(TestCase):
         headers = mock_post.call_args.kwargs['headers']
         self.assertEqual(headers['Authorization'], 'Bearer xkiro-test-secret')
         payload = mock_post.call_args.kwargs['json']
-        self.assertEqual(payload['model'], 'openai/gpt-5.6-sol')
+        self.assertEqual(payload['model'], 'qwen/qwen3.8-omni-flash:free')
 
 
 class RunCodeTests(TestCase):

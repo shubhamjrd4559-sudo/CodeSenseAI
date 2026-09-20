@@ -96,7 +96,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # AI Provider settings (xKiro / NVIDIA)
 XKIRO_API_KEY = os.environ.get('XKIRO_API_KEY', '')
 XKIRO_BASE_URL = os.environ.get('XKIRO_BASE_URL', 'https://api.xkiro.com/v1')
-XKIRO_MODEL = os.environ.get('XKIRO_MODEL', 'openai/gpt-5.6-sol')
+XKIRO_MODEL = os.environ.get('XKIRO_MODEL', 'qwen/qwen3.8-omni-flash:free')
 
 # Ollama / Legacy settings
 OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')

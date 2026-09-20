@@ -42,7 +42,7 @@ def _get_provider_config() -> tuple[str, str, str, str]:
             or os.environ.get('XKIRO_MODEL')
             or os.environ.get('LLM_CHAT_MODEL')
             or os.environ.get('LLM_MODEL')
-            or 'openai/gpt-5.6-sol'
+            or 'qwen/qwen3.8-omni-flash:free'
         )
         return xkiro_key, url, default_model, 'xKiro'
 
@@ -130,7 +130,7 @@ def _get_model(provider_name: str, default_model: str, is_chat: bool = False) ->
         return (
             os.environ.get('XKIRO_MODEL')
             or getattr(settings, 'XKIRO_MODEL', None)
-            or 'openai/gpt-5.6-sol'
+            or 'qwen/qwen3.8-omni-flash:free'
         )
     if is_chat:
         return os.environ.get('LLM_CHAT_MODEL') or os.environ.get('LLM_MODEL') or default_model

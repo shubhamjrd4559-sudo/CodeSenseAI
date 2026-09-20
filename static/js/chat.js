@@ -208,7 +208,16 @@ const Chat = (() => {
       loadYoutubeResults();
     }
     const profileDropdown = document.getElementById('profile-dropdown');
-    if (profileDropdown) profileDropdown.hidden = true;
+    if (profileDropdown) {
+      profileDropdown.hidden = true;
+      profileDropdown.style.display = 'none';
+      profileDropdown.classList.remove('open');
+    }
+    const dropdownBackdrop = document.getElementById('dropdown-backdrop');
+    if (dropdownBackdrop) {
+      dropdownBackdrop.hidden = true;
+      dropdownBackdrop.style.display = 'none';
+    }
   }
 
   function clearSession() {

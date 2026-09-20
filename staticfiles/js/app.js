@@ -541,12 +541,19 @@ const App = (() => {
 
     const dropdownBackdrop = document.getElementById('dropdown-backdrop');
 
+    function isDropdownVisible() {
+      if (!profileDropdown) return false;
+      return !profileDropdown.hidden && profileDropdown.style.display !== 'none';
+    }
+
     function openDropdown(triggerBtn) {
       if (!profileDropdown) return;
       if (closeDropdownTimeout) {
         clearTimeout(closeDropdownTimeout);
         closeDropdownTimeout = null;
       }
+      profileDropdown.hidden = false;
+      profileDropdown.style.display = 'flex';
       const btnRect = (triggerBtn || saveHeaderBtn)?.getBoundingClientRect();
       if (btnRect) {
         profileDropdown.style.top  = (btnRect.bottom + 8) + 'px';
@@ -555,17 +562,23 @@ const App = (() => {
         const maxLeft = window.innerWidth - dropW - 8;
         profileDropdown.style.left = Math.min(btnRect.left, maxLeft) + 'px';
       }
-      profileDropdown.hidden = false;
       profileDropdown.offsetHeight;
       profileDropdown.classList.add('open');
-      if (dropdownBackdrop) dropdownBackdrop.hidden = false;
+      if (dropdownBackdrop) {
+        dropdownBackdrop.hidden = false;
+        dropdownBackdrop.style.display = 'block';
+      }
     }
 
     function closeDropdown() {
       if (!profileDropdown) return;
       profileDropdown.classList.remove('open');
       profileDropdown.hidden = true;
-      if (dropdownBackdrop) dropdownBackdrop.hidden = true;
+      profileDropdown.style.display = 'none';
+      if (dropdownBackdrop) {
+        dropdownBackdrop.hidden = true;
+        dropdownBackdrop.style.display = 'none';
+      }
       if (closeDropdownTimeout) clearTimeout(closeDropdownTimeout);
     }
 
@@ -736,7 +749,7 @@ const App = (() => {
         return;
       }
 
-      if (profileDropdown && !profileDropdown.hidden) {
+      if (isDropdownVisible()) {
         closeDropdown();
       } else {
         openDropdown(saveHeaderBtn);
@@ -757,7 +770,7 @@ const App = (() => {
         }
         return;
       }
-      if (profileDropdown && !profileDropdown.hidden) {
+      if (isDropdownVisible()) {
         closeDropdown();
       } else {
         openDropdown(userChip);
@@ -904,10 +917,7 @@ const App = (() => {
       }
       if (!signedIn) {
         updateActiveFileUI(null);
-        if (profileDropdown) {
-          profileDropdown.classList.remove('open');
-          profileDropdown.hidden = true;
-        }
+        closeDropdown();
         if (savePopover) {
           savePopover.classList.remove('open');
           savePopover.hidden = true;
@@ -917,7 +927,7 @@ const App = (() => {
 
     const handleLogout = () => {
       ApiClient.logout();
-      if (profileDropdown) profileDropdown.hidden = true;
+      closeDropdown();
       if (typeof Chat !== 'undefined' && Chat.clearSession) {
         Chat.clearSession();
       }

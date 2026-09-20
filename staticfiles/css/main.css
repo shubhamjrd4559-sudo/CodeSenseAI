@@ -1876,6 +1876,15 @@ html, body {
   pointer-events: auto;
 }
 
+#profile-dropdown[hidden],
+#dropdown-backdrop[hidden] {
+  display: none !important;
+}
+
+#profile-dropdown.open {
+  display: flex !important;
+}
+
 /* --- Save Workspace Popover --- */
 .save-popover {
   position: absolute;

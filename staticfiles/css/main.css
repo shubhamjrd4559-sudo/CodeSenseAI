@@ -714,6 +714,110 @@ html, body {
   margin-left: 4px;
 }
 
+/* ============================================================
+   VS Code Terminal Interactive Styles
+   ============================================================ */
+.terminal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.terminal-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--on-surface-variant);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 6px 4px 5px 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all var(--transition-fast);
+}
+
+.terminal-tab:hover {
+  color: var(--on-surface);
+}
+
+.terminal-tab.active {
+  color: #ffffff;
+  border-bottom-color: var(--primary, #007acc);
+}
+
+.terminal-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #121316;
+}
+
+.terminal-output {
+  background: #121316 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 12px 16px !important;
+  height: 100% !important;
+  max-height: none !important;
+}
+
+.terminal-prompt {
+  color: #00b894;
+  font-weight: 600;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  color: #55efc4;
+  animation: terminalBlink 1s step-end infinite;
+  font-weight: bold;
+}
+
+@keyframes terminalBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.terminal-input-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 2px 0;
+}
+
+.terminal-input-prompt {
+  color: #dfe2eb;
+  white-space: pre;
+}
+
+.terminal-inline-input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #00cec9 !important;
+  font-family: var(--font-code) !important;
+  font-size: 13px !important;
+  line-height: inherit !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex: 1 !important;
+  min-width: 80px !important;
+  caret-color: #00cec9 !important;
+}
+
+.terminal-inline-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+  font-size: 11px;
+}
+
 
 
 .output-status {
@@ -1743,8 +1847,8 @@ html, body {
 .profile-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
-  left: auto;
+  left: 0;
+  right: auto;
   width: 290px;
   margin-top: 8px;
   background: rgba(16, 20, 26, 0.88);

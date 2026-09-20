@@ -149,144 +149,153 @@ const App = (() => {
   }
 
   /**
-   * mergeStdinIntoOutput — simulates interactive terminal by echoing
-   * stdin values after each input-prompt line in the program's output.
-   *
-   * A "prompt line" is a line whose trimmed content ends with:  : or ?
-   * (typical for cout << "Enter x: ")
-   *
-   * Returns an HTML string where:
-   *  - program output  → normal color
-   *  - stdin echoes    → cyan (.output-stdin-echo)
+   * VS Code Interactive Terminal Implementation
    */
-  function mergeStdinIntoOutput(rawStdout, stdinText) {
-    if (!rawStdout) return '';
-
-    // Stdin: split by newlines → each line is one "input event"
-    const stdinLines = stdinText
-      ? stdinText.split('\n').map(l => l.trim()).filter(Boolean)
-      : [];
-    let stdinIdx = 0;
-
-    const esc = s => escapeHtml(s);
-
-    // Split stdout into lines
-    const outLines = rawStdout.split('\n');
-    const rendered = [];
-
-    for (let i = 0; i < outLines.length; i++) {
-      const line = outLines[i];
-      const trimmed = line.trimEnd();
-
-      // Skip trailing blank line
-      if (!trimmed && i === outLines.length - 1) continue;
-
-      if (stdinIdx < stdinLines.length) {
-        // Case 1: entire line ends with a prompt char  e.g.  "Enter n: "
-        if (/[:?]\s*$/.test(trimmed)) {
-          rendered.push(
-            `<span class="terminal-line">${esc(line)}<span class="output-stdin-echo">${esc(stdinLines[stdinIdx++])}</span></span>`
-          );
-          continue;
-        }
-
-        // Case 2: prompt is INLINE — non-interactive run concatenated prompt + real output
-        // e.g.  stdout = "Enter n: 2 3 5 7 11"  (prompt + output on same line)
-        // Regex: short human-readable prompt ending with ": " or "? " followed by content
-        const inlineMatch = /^([A-Za-z][\w\s,.()\-]*?[:?]\s+)(.+)$/.exec(trimmed);
-        if (inlineMatch) {
-          const promptPart = inlineMatch[1];  // e.g. "Enter n: "
-          const outputPart = inlineMatch[2];  // e.g. "2 3 5 7 11"
-          rendered.push(
-            `<span class="terminal-line">${esc(promptPart)}<span class="output-stdin-echo">${esc(stdinLines[stdinIdx++])}</span></span>`
-          );
-          rendered.push(`<span class="terminal-line">${esc(outputPart)}</span>`);
-          continue;
-        }
-      }
-
-      rendered.push(`<span class="terminal-line">${esc(line)}</span>`);
+  function getTerminalCommand(language) {
+    switch ((language || '').toLowerCase()) {
+      case 'cpp':
+        return 'g++ -O3 main.cpp -o main && ./main';
+      case 'c':
+        return 'gcc main.c -o main && ./main';
+      case 'python':
+        return 'python main.py';
+      case 'javascript':
+        return 'node main.js';
+      case 'typescript':
+        return 'ts-node main.ts';
+      case 'java':
+        return 'javac Main.java && java Main';
+      case 'csharp':
+        return 'dotnet run';
+      case 'go':
+        return 'go run main.go';
+      case 'rust':
+        return 'rustc main.rs && ./main';
+      case 'bash':
+        return 'bash script.sh';
+      default:
+        return './program';
     }
-
-    return rendered.join('\n');
   }
 
-  function renderOutput(result, stdinText = '') {
-    const outputEl = document.getElementById('output-content');
-    const statusEl = document.getElementById('output-status');
-    const panel    = document.getElementById('output-panel');
-    if (!outputEl) return;
+  function detectInputPrompt(code) {
+    if (!code) return null;
 
-    if (panel) panel.classList.remove('collapsed');
+    // 1. C/C++: cout << "prompt" before cin / scanf
+    const cppCout = /cout\s*<<\s*["']([^"'\n]+)["']/i.exec(code);
+    const hasCin = /\bcin\s*>>|\bscanf\s*\(|\bgetline\s*\(/i.test(code);
+    if (cppCout && hasCin) return cppCout[1];
 
-    let html = '';
+    const cPrintf = /printf\s*\(\s*["']([^"'\n%]+)["']/i.exec(code);
+    if (cPrintf && hasCin) return cPrintf[1];
 
-    // ── stdout: merge stdin echoes for interactive terminal look ─
-    if (result.stdout && result.stdout.trim()) {
-      const merged = mergeStdinIntoOutput(result.stdout, stdinText);
-      html += `<div class="output-stdout">${merged}</div>`;
+    // 2. Python: input("prompt")
+    const pyInput = /input\s*\(\s*["']([^"'\n]+)["']\s*\)/i.exec(code);
+    if (pyInput) return pyInput[1];
+    if (/\binput\s*\(/i.test(code)) return 'Enter input: ';
+
+    // 3. Java: System.out.print("prompt") with Scanner
+    const javaPrint = /System\.out\.print(?:ln)?\s*\(\s*["']([^"'\n]+)["']\s*\)/i.exec(code);
+    const hasScanner = /\bScanner\b|\bBufferedReader\b/i.test(code);
+    if (javaPrint && hasScanner) return javaPrint[1];
+
+    // 4. C#: Console.Write("prompt") with Console.Read
+    const csWrite = /Console\.Write(?:Line)?\s*\(\s*["']([^"'\n]+)["']\s*\)/i.exec(code);
+    const hasConsoleRead = /\bConsole\.Read/i.test(code);
+    if (csWrite && hasConsoleRead) return csWrite[1];
+
+    // Generic fallback if input keyword exists without literal prompt string
+    if (hasCin || hasScanner || hasConsoleRead) {
+      return 'Enter input: ';
     }
 
-    // ── stderr block (compilation / runtime errors) ─────────────
-    if (result.stderr && result.stderr.trim()) {
-      if (html) html += '\n';
-      html += `<span class="output-stderr">${escapeHtml(result.stderr)}</span>`;
-    }
-
-    // ── exit / status badge ─────────────────────────────────────
-    if (result.timed_out) {
-      html += '\n<span class="output-exit-code timeout">⏱ Timed Out</span>';
-    } else if (!result.success && result.error && !result.stdout && !result.stderr) {
-      html = `<span class="output-stderr">${escapeHtml(result.error)}</span>`;
-    } else if (result.exit_code === 0) {
-      html += '\n<span class="output-exit-code success">✓ Exit 0 — OK</span>';
-    } else if (result.exit_code !== undefined && result.exit_code !== null && result.exit_code !== -1) {
-      html += `\n<span class="output-exit-code error">✗ Exit ${result.exit_code}</span>`;
-    }
-
-    outputEl.innerHTML = html || '<span class="output-placeholder">No output produced.</span>';
-    if (statusEl) statusEl.textContent = result.success ? 'Done' : 'Error';
-
-    // Scroll to top so user sees output from beginning
-    outputEl.scrollTop = 0;
+    return null;
   }
 
-
-  async function handleRunCode() {
-    if (isRunning) return;
-
-    const code = Editor.getCode().trim();
-    if (!code) {
-      const outputEl = document.getElementById('output-content');
-      if (outputEl) outputEl.innerHTML = '<span class="output-stderr">No code to run.</span>';
-      return;
-    }
-
-    const language = document.getElementById('language-select')?.value || 'python';
+  async function executeAndRenderTerminal(code, language, stdin, cmd, promptText = '') {
     const runBtn = document.getElementById('run-btn');
     const outputEl = document.getElementById('output-content');
     const statusEl = document.getElementById('output-status');
-    const panel = document.getElementById('output-panel');
 
     isRunning = true;
     if (runBtn) {
       runBtn.disabled = true;
       runBtn.innerHTML = '<span class="loading-spinner" style="width:14px;height:14px;border-width:2px;"></span><span>Running</span>';
     }
-    if (outputEl) outputEl.innerHTML = '<span class="output-placeholder">Running...</span>';
     if (statusEl) statusEl.textContent = 'Running...';
-    if (panel) panel.classList.remove('collapsed');
-    setStatus('Running code...', 'loading');
+    setStatus('Running in terminal...', 'loading');
+
+    // Add loader line
+    const loadingId = 'term-loading-' + Date.now();
+    if (outputEl) {
+      const loader = document.createElement('div');
+      loader.id = loadingId;
+      loader.className = 'terminal-line';
+      loader.style.color = '#ffeaa7';
+      loader.innerHTML = '<span class="loading-spinner" style="width:11px;height:11px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span>Executing...';
+      outputEl.appendChild(loader);
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
 
     try {
-      const stdin = document.getElementById('stdin-content')?.value || '';
       const result = await ApiClient.runCode(code, language, stdin);
-      renderOutput(result, stdin);   // pass stdin for interactive echo
 
+      // Remove loader
+      document.getElementById(loadingId)?.remove();
+
+      let stdout = (result.stdout || '').trimEnd();
+
+      // Avoid repeating the prompt if stdout echoes it back
+      if (promptText && stdout) {
+        const pTrimmed = promptText.trim();
+        if (stdout.startsWith(pTrimmed)) {
+          stdout = stdout.substring(pTrimmed.length).replace(/^[\s:]+/, '');
+        }
+      }
+
+      let html = '';
+      if (stdout) {
+        html += `<div class="output-stdout">${escapeHtml(stdout)}</div>`;
+      }
+
+      if (result.stderr && result.stderr.trim()) {
+        html += `<div class="output-stderr">${escapeHtml(result.stderr.trim())}</div>`;
+      }
+
+      // Exit code status badge
+      if (result.timed_out) {
+        html += `<div class="output-exit-code timeout">⏱ Timed Out (Execution took too long)</div>`;
+      } else if (!result.success && result.error && !result.stdout && !result.stderr) {
+        html += `<div class="output-stderr">${escapeHtml(result.error)}</div>`;
+      } else if (result.exit_code === 0) {
+        html += `<div class="output-exit-code success">✓ [Process completed - exit code 0]</div>`;
+      } else if (result.exit_code !== undefined && result.exit_code !== null) {
+        html += `<div class="output-exit-code error">✗ [Process exited with code ${result.exit_code}]</div>`;
+      }
+
+      // New prompt line for next command
+      html += `<div class="terminal-command-line" style="margin-top: 10px;"><span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-cursor">█</span></div>`;
+
+      if (outputEl) {
+        const resultContainer = document.createElement('div');
+        resultContainer.innerHTML = html;
+        outputEl.appendChild(resultContainer);
+        outputEl.scrollTop = outputEl.scrollHeight;
+      }
+
+      if (statusEl) statusEl.textContent = result.success ? 'Done' : 'Error';
       setStatus(result.success ? 'Execution complete' : 'Execution failed', result.success ? 'ready' : 'error');
-    } catch (error) {
-      renderOutput({ success: false, error: error.message, exit_code: -1 });
-      setStatus('Run error', 'error');
+
+    } catch (err) {
+      document.getElementById(loadingId)?.remove();
+      if (outputEl) {
+        const errDiv = document.createElement('div');
+        errDiv.innerHTML = `<div class="output-stderr">${escapeHtml(err.message || 'Execution error')}</div><div class="terminal-command-line" style="margin-top: 10px;"><span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-cursor">█</span></div>`;
+        outputEl.appendChild(errDiv);
+        outputEl.scrollTop = outputEl.scrollHeight;
+      }
+      if (statusEl) statusEl.textContent = 'Error';
+      setStatus('Execution failed', 'error');
     } finally {
       isRunning = false;
       if (runBtn) {
@@ -296,32 +305,70 @@ const App = (() => {
     }
   }
 
-  // ── Smart stdin warning ──────────────────────────────────────
-  // Detect if code uses stdin (cin, input, scanf, Scanner)
-  // and warn user if the stdin box is empty
-  function checkStdinWarning() {
-    const code = typeof Editor !== 'undefined' ? Editor.getCode() : '';
-    const stdin = document.getElementById('stdin-content')?.value?.trim() || '';
-    const banner = document.getElementById('stdin-warn-banner');
-    const keyword = document.getElementById('stdin-warn-keyword');
-    if (!banner || !keyword) return;
+  async function handleRunCode() {
+    if (isRunning) return;
 
-    const patterns = [
-      { re: /\bcin\s*>>/, label: 'cin >>' },
-      { re: /\bscanf\s*\(/, label: 'scanf()' },
-      { re: /\binput\s*\(/, label: 'input()' },
-      { re: /\bScanner\b/, label: 'Scanner' },
-      { re: /\bBufferedReader\b/, label: 'BufferedReader' },
-      { re: /\bgetline\s*\(/, label: 'getline()' },
-    ];
+    const code = Editor.getCode().trim();
+    const outputEl = document.getElementById('output-content');
+    const panel = document.getElementById('output-panel');
 
-    const matched = patterns.find(p => p.re.test(code));
-    if (matched && !stdin) {
-      keyword.textContent = matched.label;
-      banner.removeAttribute('hidden');
-    } else {
-      banner.setAttribute('hidden', '');
+    if (panel) panel.classList.remove('collapsed');
+
+    if (!code) {
+      if (outputEl) {
+        outputEl.innerHTML = '<span class="output-stderr">No code to run. Write code in the editor first.</span><div class="terminal-command-line" style="margin-top: 8px;"><span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-cursor">█</span></div>';
+      }
+      return;
     }
+
+    const language = document.getElementById('language-select')?.value || 'python';
+    const cmd = getTerminalCommand(language);
+    const promptText = detectInputPrompt(code);
+
+    if (promptText) {
+      // INTERACTIVE MODE: Render prompt line with inline input & wait for Enter!
+      outputEl.innerHTML = `
+        <div class="terminal-command-line">
+          <span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-command-text">${escapeHtml(cmd)}</span>
+        </div>
+        <div class="terminal-input-line" id="term-active-input-row">
+          <span class="terminal-input-prompt">${escapeHtml(promptText)}</span>
+          <input type="text" class="terminal-inline-input" id="term-inline-input" autofocus autocomplete="off" spellcheck="false" placeholder="type value and press Enter..." />
+        </div>
+      `;
+
+      const inputEl = document.getElementById('term-inline-input');
+      if (inputEl) {
+        // Immediate focus
+        setTimeout(() => inputEl.focus(), 50);
+
+        inputEl.addEventListener('keydown', async (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = inputEl.value;
+            // Freeze input row as typed text
+            const row = document.getElementById('term-active-input-row');
+            if (row) {
+              row.className = 'terminal-line';
+              row.innerHTML = `<span class="terminal-input-prompt">${escapeHtml(promptText)}</span><span class="output-stdin-echo">${escapeHtml(val)}</span>`;
+            }
+            await executeAndRenderTerminal(code, language, val, cmd, promptText);
+          }
+        });
+      }
+    } else {
+      // NON-INTERACTIVE MODE: Run immediately
+      outputEl.innerHTML = `
+        <div class="terminal-command-line">
+          <span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-command-text">${escapeHtml(cmd)}</span>
+        </div>
+      `;
+      await executeAndRenderTerminal(code, language, '', cmd, '');
+    }
+  }
+
+  function checkStdinWarning() {
+    // Smart inline terminal handles input prompts interactively
   }
 
   function initAuthControls() {
@@ -492,6 +539,8 @@ const App = (() => {
       if (dropdownAvatar) dropdownAvatar.textContent = initials(user.username || user.email);
     }
 
+    const dropdownBackdrop = document.getElementById('dropdown-backdrop');
+
     function openDropdown(triggerBtn) {
       if (!profileDropdown) return;
       if (closeDropdownTimeout) {
@@ -501,23 +550,29 @@ const App = (() => {
       const btnRect = (triggerBtn || saveHeaderBtn)?.getBoundingClientRect();
       if (btnRect) {
         profileDropdown.style.top  = (btnRect.bottom + 8) + 'px';
-        profileDropdown.style.left = btnRect.left + 'px';
+        // Clamp left so dropdown never overflows right edge of viewport
+        const dropW = profileDropdown.offsetWidth || 300;
+        const maxLeft = window.innerWidth - dropW - 8;
+        profileDropdown.style.left = Math.min(btnRect.left, maxLeft) + 'px';
       }
       profileDropdown.hidden = false;
-      profileDropdown.offsetHeight; // force reflow
+      profileDropdown.offsetHeight;
       profileDropdown.classList.add('open');
+      if (dropdownBackdrop) dropdownBackdrop.hidden = false;
     }
 
     function closeDropdown() {
       if (!profileDropdown) return;
       profileDropdown.classList.remove('open');
+      profileDropdown.hidden = true;
+      if (dropdownBackdrop) dropdownBackdrop.hidden = true;
       if (closeDropdownTimeout) clearTimeout(closeDropdownTimeout);
-      closeDropdownTimeout = setTimeout(() => {
-        if (!profileDropdown.classList.contains('open')) {
-          profileDropdown.hidden = true;
-        }
-      }, 250);
     }
+
+    // Backdrop click → close dropdown
+    document.getElementById('dropdown-backdrop')?.addEventListener('click', () => closeDropdown());
+    // X button → close dropdown
+    document.getElementById('dropdown-close-btn')?.addEventListener('click', () => closeDropdown());
 
     function openSavePopover() {
       if (!savePopover) return;
@@ -714,15 +769,7 @@ const App = (() => {
       }
     });
 
-    document.addEventListener('click', (e) => {
-      if (profileDropdown && !profileDropdown.hidden) {
-        if (!profileDropdown.contains(e.target) &&
-            e.target !== saveHeaderBtn && !saveHeaderBtn?.contains(e.target) &&
-            e.target !== userChip && !userChip?.contains(e.target)) {
-          closeDropdown();
-        }
-      }
-    });
+    // Outside-click handled by backdrop — no document listener needed
 
     saveCancelBtnPopover?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1059,7 +1106,14 @@ const App = (() => {
     document.getElementById('clear-output-btn')?.addEventListener('click', (event) => {
       event.stopPropagation();
       const outputEl = document.getElementById('output-content');
-      if (outputEl) outputEl.innerHTML = '<span class="output-placeholder">Run your code to see output here...</span>';
+      if (outputEl) outputEl.innerHTML = '<span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-cursor">█</span>';
+      const statusEl = document.getElementById('output-status');
+      if (statusEl) statusEl.textContent = '';
+    });
+
+    // Clicking anywhere in the terminal focuses the active inline input
+    document.getElementById('output-content')?.addEventListener('click', () => {
+      document.getElementById('term-inline-input')?.focus();
     });
 
     function toggleOutput(event) {

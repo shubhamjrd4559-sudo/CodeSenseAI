@@ -2,16 +2,17 @@
 Code execution service for CodeSense AI (Cloud/Vercel Ready).
 
 Uses the public Judge0 API (https://ce.judge0.com) 
-for secure, remote code execution.
+with base64 encoding and unicode normalization for robust remote code execution.
 """
 
-import requests
+import base64
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
-# Judge0 execution endpoint
-JUDGE0_API_URL = 'https://ce.judge0.com/submissions?base64_encoded=false&wait=true'
+# Judge0 execution endpoint with base64 enabled for full UTF-8/Unicode safety
+JUDGE0_API_URL = 'https://ce.judge0.com/submissions?base64_encoded=true&wait=true'
 
 # Map frontend language names to Judge0 language IDs
 LANGUAGE_MAP = {
@@ -30,9 +31,44 @@ LANGUAGE_MAP = {
 }
 
 
+def _normalize_code(code: str) -> str:
+    """
+    Replaces common typographical/mathematical Unicode characters that might be
+    pasted from chat, rich text, or keyboards with standard ASCII code equivalents.
+    """
+    replacements = {
+        '\u2A7D': '<=',  # ⩽
+        '\u2264': '<=',  # ≤
+        '\u2A7E': '>=',  # ⩾
+        '\u2265': '>=',  # ≥
+        '\u2260': '!=',  # ≠
+        '\u201C': '"',   # “
+        '\u201D': '"',   # ”
+        '\u2018': "'",   # ‘
+        '\u2019': "'",   # ’
+        '\u00D7': '*',   # ×
+        '\u00F7': '/',   # ÷
+        '\u2014': '-',   # —
+        '\u2013': '-',   # –
+    }
+    for old, new in replacements.items():
+        code = code.replace(old, new)
+    return code
+
+
+def _b64_decode(val: str | None) -> str:
+    """Safely decode base64 string from Judge0."""
+    if not val:
+        return ''
+    try:
+        return base64.b64decode(val.encode('utf-8')).decode('utf-8', errors='replace')
+    except Exception:
+        return str(val)
+
+
 def execute_code(code: str, language: str = 'python', stdin: str = '') -> dict:
     """
-    Execute code remotely using the Judge0 API.
+    Execute code remotely using the Judge0 API with base64 encoding.
     """
     frontend_lang = language.lower().strip()
     language_id = LANGUAGE_MAP.get(frontend_lang)
@@ -47,16 +83,31 @@ def execute_code(code: str, language: str = 'python', stdin: str = '') -> dict:
             'language': frontend_lang,
         }
 
+    clean_code = _normalize_code(code)
+    b64_code = base64.b64encode(clean_code.encode('utf-8')).decode('utf-8')
+    b64_stdin = base64.b64encode((stdin or '').encode('utf-8')).decode('utf-8')
+
     payload = {
-        'source_code': code,
+        'source_code': b64_code,
         'language_id': language_id,
-        'stdin': stdin,
+        'stdin': b64_stdin,
     }
 
     try:
         logger.info(f'Sending code to Judge0 API (language_id: {language_id})')
-        response = requests.post(JUDGE0_API_URL, json=payload, timeout=20)
-        response.raise_for_status()
+        response = requests.post(JUDGE0_API_URL, json=payload, timeout=25)
+
+        if not response.ok:
+            body = response.text[:200]
+            logger.error(f'Judge0 HTTP {response.status_code}: {body}')
+            return {
+                'success': False,
+                'stdout': '',
+                'stderr': f'Execution server error ({response.status_code}): {body}',
+                'exit_code': -1,
+                'timed_out': False,
+                'language': frontend_lang,
+            }
 
         data = response.json()
         
@@ -64,9 +115,10 @@ def execute_code(code: str, language: str = 'python', stdin: str = '') -> dict:
         # 7-12 = Runtime Error
         status_id = data.get('status', {}).get('id')
         
-        stdout = data.get('stdout') or ''
-        stderr = data.get('stderr') or ''
-        compile_output = data.get('compile_output') or ''
+        stdout = _b64_decode(data.get('stdout'))
+        stderr = _b64_decode(data.get('stderr'))
+        compile_output = _b64_decode(data.get('compile_output'))
+        message = _b64_decode(data.get('message'))
         
         timed_out = status_id == 5
         
@@ -74,14 +126,14 @@ def execute_code(code: str, language: str = 'python', stdin: str = '') -> dict:
         if status_id == 6:
             stderr = f"❌ Compilation Error:\n{compile_output}"
             exit_code = 1
-        elif status_id >= 7:
+        elif status_id and status_id >= 7:
             exit_code = 1
         else:
             exit_code = 0
 
         # Sometimes errors are in message
-        if not stdout and not stderr and data.get('message'):
-            stderr = data.get('message')
+        if not stdout and not stderr and message:
+            stderr = message
 
         return {
             'success': exit_code == 0 and not timed_out,
@@ -97,7 +149,7 @@ def execute_code(code: str, language: str = 'python', stdin: str = '') -> dict:
         return {
             'success': False,
             'stdout': '',
-            'stderr': '⏱️ Request to execution server timed out.',
+            'stderr': '⏱️ Request to execution server timed out. Please try again.',
             'exit_code': -1,
             'timed_out': True,
             'language': frontend_lang,
@@ -107,7 +159,7 @@ def execute_code(code: str, language: str = 'python', stdin: str = '') -> dict:
         return {
             'success': False,
             'stdout': '',
-            'stderr': f'Execution server error. Please try again later.',
+            'stderr': f'Execution error: {str(e)}',
             'exit_code': -1,
             'timed_out': False,
             'language': frontend_lang,

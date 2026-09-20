@@ -188,6 +188,23 @@ class LLMServiceTests(TestCase):
         self.assertEqual(payload['model'], 'fast-chat-model')
         self.assertEqual(payload['max_tokens'], 700)
 
+    @patch.dict('os.environ', {'XKIRO_API_KEY': 'xkiro-test-secret', 'XKIRO_MODEL': 'openai/gpt-5.6-sol'})
+    @patch('api.services.ollama_service.requests.post')
+    def test_chat_uses_xkiro_when_configured(self, mock_post):
+        from api.services.ollama_service import chat
+
+        mock_post.return_value = _MockLLMResponse()
+
+        answer = chat([{'role': 'user', 'content': 'Hello xKiro'}], system_prompt='Be helpful')
+
+        self.assertEqual(answer, 'Fast answer')
+        url = mock_post.call_args.args[0]
+        self.assertEqual(url, 'https://api.xkiro.com/v1/chat/completions')
+        headers = mock_post.call_args.kwargs['headers']
+        self.assertEqual(headers['Authorization'], 'Bearer xkiro-test-secret')
+        payload = mock_post.call_args.kwargs['json']
+        self.assertEqual(payload['model'], 'openai/gpt-5.6-sol')
+
 
 class RunCodeTests(TestCase):
     """Tests for the /api/run-code endpoint."""

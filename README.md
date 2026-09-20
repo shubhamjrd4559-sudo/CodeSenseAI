@@ -132,6 +132,11 @@ pip install -r requirements.txt
 
 Create a `.env` file in the project root:
 ```env
+# xKiro AI (Recommended)
+XKIRO_API_KEY="your-xkiro-api-key-here"
+XKIRO_MODEL="openai/gpt-5.6-sol"
+
+# Fallback AI Provider (NVIDIA NIM)
 NVIDIA_API_KEY="nvapi-your-key-here"
 LLM_MODEL="meta/llama-3.1-8b-instruct"
 ```
@@ -159,8 +164,8 @@ This project is pre-configured for serverless deployment using `vercel.json`.
 1. Push your project to GitHub
 2. Import the repository into Vercel
 3. Add environment variables:
-   * `NVIDIA_API_KEY`
-   * `LLM_MODEL`
+   * `XKIRO_API_KEY` (and optionally `XKIRO_MODEL`)
+   * Or `NVIDIA_API_KEY` (if using NVIDIA)
 4. Click **Deploy**
 
 Done ✅

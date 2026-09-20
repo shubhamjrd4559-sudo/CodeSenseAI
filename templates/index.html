@@ -98,10 +98,42 @@
       <aside class="right-panel" id="right-panel">
 
 
-        <section class="panel chat-panel" id="chat-panel">
+        <section class="panel chat-panel" id="chat-panel" style="position:relative;">
           <div class="panel-header">
-            <span class="panel-title">AI Assistant</span>
+            <div class="panel-title-wrapper" style="display:flex;align-items:center;gap:7px;">
+              <span class="panel-title">AI Assistant</span>
+            </div>
+            <div class="panel-header-actions">
+              <button type="button" class="panel-action-btn" id="header-new-chat-btn" title="Start New Chat" aria-label="New Chat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>New</span>
+              </button>
+              <button type="button" class="panel-action-btn" id="header-history-btn" title="View Old Chats" aria-label="Old Chats">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Old Chats</span>
+              </button>
+            </div>
           </div>
+
+          <!-- Old Chats History Overlay inside AI Assistant -->
+          <div class="chat-history-overlay" id="chat-history-overlay" hidden style="display:none;">
+            <div class="history-overlay-header">
+              <div class="history-overlay-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color:var(--accent-purple, #a855f7);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Old Chats</span>
+              </div>
+              <div class="history-overlay-header-actions">
+                <button type="button" class="history-quick-new-btn" id="history-new-chat-btn" title="Start New Chat">+ New Chat</button>
+                <button type="button" class="history-close-btn" id="history-close-btn" title="Close Old Chats" aria-label="Close">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="history-overlay-list" id="panel-chat-sessions-list">
+              <div class="empty-list-msg">No old chats yet.</div>
+            </div>
+          </div>
+
           <div class="chat-messages" id="chat-messages">
             <div class="chat-empty" id="chat-empty">
               <div class="robot-avatar-container">
@@ -140,11 +172,42 @@
             </div>
           </div>
           <!-- Typing indicator -->
-          <div class="chat-typing" id="chat-typing" hidden>
+          <div class="chat-typing" id="chat-typing" hidden style="display:none;">
             <div class="typing-dot"></div>
             <div class="typing-dot"></div>
             <div class="typing-dot"></div>
           </div>
+
+          <!-- AI Action Bar right above three colour dots -->
+          <div class="chat-ai-bar" id="chat-ai-bar">
+            <button type="button" class="chat-ai-action-btn" id="new-chat-logo-btn" title="Click to start New Chat" aria-label="Start New Chat">
+              <span class="ai-btn-logo-wrapper">
+                <svg class="ai-btn-logo-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Robot Head -->
+                  <rect x="25" y="32" width="50" height="36" rx="18" fill="#0f172a" stroke="#00f2fe" stroke-width="3"/>
+                  <rect x="30" y="37" width="40" height="26" rx="13" fill="#1e293b"/>
+                  <!-- Eyes -->
+                  <circle cx="42" cy="50" r="4" fill="#00f2fe"/>
+                  <circle cx="58" cy="50" r="4" fill="#00f2fe"/>
+                  <path d="M48 56c1.5 1.5 2.5 1.5 4 0" stroke="#00f2fe" stroke-width="2.5" stroke-linecap="round"/>
+                  <!-- Ears -->
+                  <rect x="21" y="44" width="4" height="12" rx="2" fill="#00f2fe"/>
+                  <rect x="75" y="44" width="4" height="12" rx="2" fill="#00f2fe"/>
+                  <!-- Antenna -->
+                  <line x1="50" y1="32" x2="50" y2="24" stroke="#00f2fe" stroke-width="2.5"/>
+                  <circle cx="50" cy="22" r="3.5" fill="#00f2fe" />
+                </svg>
+              </span>
+              <span class="ai-btn-text">New Chat</span>
+            </button>
+
+            <button type="button" class="chat-history-pill-btn" id="toggle-chat-history-btn" title="View Old Chats" aria-label="Old Chats">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Old Chats</span>
+              <span class="chat-history-badge" id="chat-history-badge">0</span>
+            </button>
+          </div>
+
           <!-- Decorator row -->
           <div class="chat-decorator-row">
             <div class="decorator-dots">

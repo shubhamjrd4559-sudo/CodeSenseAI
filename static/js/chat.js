@@ -95,14 +95,27 @@ const Chat = (() => {
     }
   }
 
-  function saveCurrentChatSession(userMessage, assistantMessage = '') {
+  function getStorageKey() {
     const user = ApiClient.getUser();
-    if (!user) return;
-    const key = `codesense_chat_sessions_${user.email}`;
-    let sessions = [];
+    return user ? `codesense_chat_sessions_${user.email}` : 'codesense_chat_sessions_guest';
+  }
+
+  function getSessions() {
+    const key = getStorageKey();
     try {
-      sessions = JSON.parse(localStorage.getItem(key) || '[]');
-    } catch (err) {}
+      return JSON.parse(localStorage.getItem(key) || '[]');
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function setSessions(sessions) {
+    const key = getStorageKey();
+    localStorage.setItem(key, JSON.stringify(sessions));
+  }
+
+  function saveCurrentChatSession(userMessage, assistantMessage = '') {
+    let sessions = getSessions();
     if (!currentSessionId) {
       currentSessionId = Date.now().toString();
     }
@@ -111,9 +124,9 @@ const Chat = (() => {
       const titleText = userMessage || 'New Chat';
       session = {
         id: currentSessionId,
-        title: titleText.substring(0, 32) + (titleText.length > 32 ? '...' : ''),
+        title: titleText.substring(0, 34) + (titleText.length > 34 ? '...' : ''),
         messages: [],
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
       };
       sessions.unshift(session);
     }
@@ -128,69 +141,161 @@ const Chat = (() => {
         session.messages.push({ role: 'assistant', content: assistantMessage });
       }
     }
-    if (sessions.length > 15) {
-      sessions = sessions.slice(0, 15);
+    if (sessions.length > 25) {
+      sessions = sessions.slice(0, 25);
     }
-    localStorage.setItem(key, JSON.stringify(sessions));
+    setSessions(sessions);
+    renderChatSessions();
   }
 
   function renderChatSessions() {
+    const sessions = getSessions();
+
+    // 1. Update Badge on "Old Chats" pill button
+    const badge = document.getElementById('chat-history-badge');
+    if (badge) {
+      badge.textContent = sessions.length;
+      badge.style.display = sessions.length > 0 ? 'inline-block' : 'none';
+    }
+
+    // 2. Render Panel History Overlay List
+    const panelList = document.getElementById('panel-chat-sessions-list');
+    if (panelList) {
+      if (sessions.length === 0) {
+        panelList.innerHTML = `
+          <div class="empty-list-msg" style="padding: 30px 14px; text-align: center; color: var(--on-surface-variant); font-size: 11.5px; line-height: 1.6;">
+            No old chats yet.<br><span style="opacity: 0.6; font-size: 10.5px;">Ask a question to save your first conversation!</span>
+          </div>`;
+      } else {
+        panelList.innerHTML = sessions.map(session => `
+          <div class="history-chat-item ${session.id === currentSessionId ? 'active' : ''}" data-id="${session.id}">
+            <div class="history-chat-content">
+              <div class="history-chat-title" title="${escapeHtml(session.title)}">${escapeHtml(session.title)}</div>
+              <div class="history-chat-meta">
+                <span>${session.timestamp || 'Recent'}</span>
+                <span>• ${session.messages ? session.messages.length : 0} msgs</span>
+              </div>
+            </div>
+            <button type="button" class="history-delete-btn" data-id="${session.id}" title="Delete chat" aria-label="Delete chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </button>
+          </div>
+        `).join('');
+
+        panelList.querySelectorAll('.history-chat-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            if (e.target.closest('.history-delete-btn')) return;
+            const sessionId = item.dataset.id;
+            loadChatSession(sessionId);
+            closeHistory();
+          });
+        });
+
+        panelList.querySelectorAll('.history-delete-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const sessionId = btn.dataset.id;
+            deleteChatSession(sessionId);
+          });
+        });
+      }
+    }
+
+    // 3. Render in Save Dropdown (syncs with workspace dropdown)
     chatSessionsList = document.getElementById('chat-sessions-list');
-    if (!chatSessionsList) return;
-    const user = ApiClient.getUser();
-    if (!user) {
-      chatSessionsList.innerHTML = '<div class="empty-list-msg">Please sign in.</div>';
-      return;
+    if (chatSessionsList) {
+      if (sessions.length === 0) {
+        chatSessionsList.innerHTML = '<div class="empty-list-msg">No recent chats.</div>';
+      } else {
+        chatSessionsList.innerHTML = sessions.map(session => `
+          <div class="chat-history-item" data-id="${session.id}">
+            <div class="chat-history-item-content">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12" style="color: var(--accent-purple);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="chat-history-item-title" title="${escapeHtml(session.title)}">${escapeHtml(session.title)}</span>
+            </div>
+            <button class="item-delete-btn" data-id="${session.id}" title="Delete chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </button>
+          </div>
+        `).join('');
+
+        chatSessionsList.querySelectorAll('.chat-history-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            if (e.target.closest('.item-delete-btn')) return;
+            const sessionId = item.dataset.id;
+            loadChatSession(sessionId);
+          });
+        });
+
+        chatSessionsList.querySelectorAll('.item-delete-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const sessionId = btn.dataset.id;
+            deleteChatSession(sessionId);
+          });
+        });
+      }
     }
-    const key = `codesense_chat_sessions_${user.email}`;
-    let sessions = [];
-    try {
-      sessions = JSON.parse(localStorage.getItem(key) || '[]');
-    } catch (err) {}
-    if (sessions.length === 0) {
-      chatSessionsList.innerHTML = '<div class="empty-list-msg">No recent chats.</div>';
-      return;
+  }
+
+  function deleteChatSession(sessionId) {
+    let sessions = getSessions();
+    sessions = sessions.filter(s => s.id !== sessionId);
+    setSessions(sessions);
+    if (currentSessionId === sessionId) {
+      startNewChat();
+    } else {
+      renderChatSessions();
     }
-    chatSessionsList.innerHTML = sessions.map(session => `
-      <div class="chat-history-item" data-id="${session.id}">
-        <div class="chat-history-item-content">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12" style="color: var(--accent-purple);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span class="chat-history-item-title" title="${session.title}">${session.title}</span>
-        </div>
-        <button class="item-delete-btn" data-id="${session.id}" title="Delete chat">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-        </button>
-      </div>
-    `).join('');
-    chatSessionsList.querySelectorAll('.chat-history-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        if (e.target.closest('.item-delete-btn')) return;
-        const sessionId = item.dataset.id;
-        loadChatSession(sessionId);
-      });
-    });
-    chatSessionsList.querySelectorAll('.item-delete-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const sessionId = btn.dataset.id;
-        const filtered = sessions.filter(s => s.id !== sessionId);
-        localStorage.setItem(key, JSON.stringify(filtered));
-        if (currentSessionId === sessionId) {
-          currentSessionId = null;
-        }
-        renderChatSessions();
-      });
-    });
+    if (typeof App !== 'undefined' && App.setStatus) {
+      App.setStatus('Chat deleted', 'ready');
+    }
+  }
+
+  function startNewChat() {
+    currentSessionId = null;
+    if (messagesEl) {
+      messagesEl.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = 'flex';
+      if (suggestionsEl) suggestionsEl.style.display = 'flex';
+    }
+    closeHistory();
+    if (inputEl) {
+      inputEl.value = '';
+      inputEl.focus();
+    }
+    if (typeof App !== 'undefined' && App.setStatus) {
+      App.setStatus('New chat started ✨', 'ready');
+    }
+  }
+
+  function openHistory() {
+    const overlay = document.getElementById('chat-history-overlay');
+    if (!overlay) return;
+    renderChatSessions();
+    overlay.hidden = false;
+    overlay.style.display = 'flex';
+  }
+
+  function closeHistory() {
+    const overlay = document.getElementById('chat-history-overlay');
+    if (!overlay) return;
+    overlay.hidden = true;
+    overlay.style.display = 'none';
+  }
+
+  function toggleHistory() {
+    const overlay = document.getElementById('chat-history-overlay');
+    if (!overlay) return;
+    if (!overlay.hidden && overlay.style.display !== 'none') {
+      closeHistory();
+    } else {
+      openHistory();
+    }
   }
 
   function loadChatSession(sessionId) {
-    const user = ApiClient.getUser();
-    if (!user) return;
-    const key = `codesense_chat_sessions_${user.email}`;
-    let sessions = [];
-    try {
-      sessions = JSON.parse(localStorage.getItem(key) || '[]');
-    } catch (err) {}
+    const sessions = getSessions();
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
     currentSessionId = sessionId;
@@ -207,6 +312,7 @@ const Chat = (() => {
       messagesEl.scrollTop = messagesEl.scrollHeight;
       loadYoutubeResults();
     }
+    closeHistory();
     const profileDropdown = document.getElementById('profile-dropdown');
     if (profileDropdown) {
       profileDropdown.hidden = true;
@@ -221,12 +327,7 @@ const Chat = (() => {
   }
 
   function clearSession() {
-    currentSessionId = null;
-    if (messagesEl) {
-      messagesEl.innerHTML = '';
-      if (emptyEl) emptyEl.style.display = 'flex';
-      if (suggestionsEl) suggestionsEl.style.display = 'flex';
-    }
+    startNewChat();
   }
 
   function addMessage(role, content) {
@@ -364,7 +465,38 @@ const Chat = (() => {
         });
       });
     }
+
+    // Wire AI Logo and New Chat buttons
+    document.getElementById('new-chat-logo-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startNewChat();
+    });
+    document.getElementById('header-new-chat-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startNewChat();
+    });
+    document.getElementById('history-new-chat-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startNewChat();
+    });
+
+    // Wire Old Chats / History buttons
+    document.getElementById('toggle-chat-history-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHistory();
+    });
+    document.getElementById('header-history-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHistory();
+    });
+    document.getElementById('history-close-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeHistory();
+    });
+
+    // Initial render of chat sessions and badge
+    renderChatSessions();
   }
 
-  return { init, addMessage, renderChatSessions, clearSession };
+  return { init, addMessage, renderChatSessions, clearSession, startNewChat, toggleHistory, openHistory, closeHistory };
 })();

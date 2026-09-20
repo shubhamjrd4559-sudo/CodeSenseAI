@@ -1248,6 +1248,10 @@ html, body {
   padding: 8px 16px;
   flex-shrink: 0;
 }
+.chat-typing[hidden],
+#chat-typing[hidden] {
+  display: none !important;
+}
 .typing-dot {
   width: 7px;
   height: 7px;
@@ -1260,6 +1264,284 @@ html, body {
 @keyframes typingBounce {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* --- Panel Header Actions --- */
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.panel-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--on-surface);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* --- AI Action Bar (Above 3-Color Dots) --- */
+.chat-ai-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: var(--surface-container-low);
+  border-top: 1px solid var(--outline-variant);
+  flex-shrink: 0;
+}
+
+.chat-ai-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.28);
+  border-radius: 20px;
+  padding: 4px 12px 4px 7px;
+  cursor: pointer;
+  color: #e2e8f0;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-ai-action-btn:hover {
+  background: rgba(0, 242, 254, 0.18);
+  border-color: #00f2fe;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.35);
+  transform: translateY(-1px);
+}
+
+.chat-ai-action-btn:active {
+  transform: scale(0.97);
+}
+
+.ai-btn-logo-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-btn-logo-svg {
+  width: 17px;
+  height: 17px;
+  filter: drop-shadow(0 0 4px rgba(0, 242, 254, 0.7));
+}
+
+.chat-history-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chat-history-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.chat-history-badge {
+  background: var(--accent-purple, #a855f7);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 0 5px;
+  min-width: 15px;
+  text-align: center;
+  line-height: 15px;
+}
+
+/* --- Old Chats History Overlay --- */
+.chat-history-overlay {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background: rgba(14, 18, 24, 0.98);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  animation: fadeInHistory 0.2s ease-out;
+}
+
+.chat-history-overlay[hidden] {
+  display: none !important;
+}
+
+@keyframes fadeInHistory {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.history-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  flex-shrink: 0;
+}
+
+.history-overlay-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.history-overlay-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-quick-new-btn {
+  background: rgba(0, 242, 254, 0.10);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.history-quick-new-btn:hover {
+  background: rgba(0, 242, 254, 0.22);
+  border-color: #00f2fe;
+}
+
+.history-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+}
+
+.history-close-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.history-overlay-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-chat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  gap: 10px;
+}
+
+.history-chat-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(0, 242, 254, 0.3);
+  transform: translateX(2px);
+}
+
+.history-chat-item.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 242, 254, 0.08);
+}
+
+.history-chat-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.history-chat-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-chat-meta {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+  display: flex;
+  gap: 6px;
+}
+
+.history-delete-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.history-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+  transform: scale(1.1);
 }
 
 /* --- YouTube Video Recommendations & Links --- */

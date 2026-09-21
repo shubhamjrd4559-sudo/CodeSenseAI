@@ -361,6 +361,46 @@ const Chat = (() => {
   function showTypingIndicator() { showTyping(); }
   function removeTypingIndicator() { hideTyping(); }
 
+  let rateLimitCooldownTimer = null;
+
+  function handleRateLimitCooldown(waitSeconds) {
+    if (rateLimitCooldownTimer) {
+      clearInterval(rateLimitCooldownTimer);
+      rateLimitCooldownTimer = null;
+    }
+    let remaining = waitSeconds || 30;
+    if (sendBtn) sendBtn.disabled = true;
+    if (inputEl) inputEl.disabled = true;
+
+    function updateBtn() {
+      if (sendBtn) {
+        sendBtn.innerHTML = `<span style="font-size:10px;font-weight:700;white-space:nowrap;padding:0 2px;">${remaining}s</span>`;
+      }
+    }
+
+    updateBtn();
+    rateLimitCooldownTimer = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        clearInterval(rateLimitCooldownTimer);
+        rateLimitCooldownTimer = null;
+        if (sendBtn) {
+          sendBtn.disabled = false;
+          sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+        }
+        if (inputEl) {
+          inputEl.disabled = false;
+          inputEl.focus();
+        }
+        if (typeof App !== 'undefined' && App.setStatus) {
+          App.setStatus('Ready to chat ✨', 'ready');
+        }
+      } else {
+        updateBtn();
+      }
+    }, 1000);
+  }
+
   async function sendMessage(message) {
     if (isLoading || !inputEl) return;
 
@@ -418,24 +458,48 @@ const Chat = (() => {
         },
         (error) => {
           hideTyping();
-          if (!assistantMsgEl) {
-            addMessage('assistant', `⚠️ Error: ${error.message}`);
+          const isRateLimit = error.status === 429 || (error.message && error.message.includes('Rate limit'));
+          let waitSeconds = error.wait_seconds;
+          if (!waitSeconds && error.message) {
+            const match = error.message.match(/(\d+)\s*s/);
+            if (match) waitSeconds = parseInt(match[1], 10);
+          }
+          if (isRateLimit) {
+            waitSeconds = waitSeconds || 30;
+            addMessage('assistant', `⏳ **Rate Limit Reached (Max 7 msgs / min)**<br>${escapeHtml(error.message)}`);
+            handleRateLimitCooldown(waitSeconds);
           } else {
-            assistantMsgEl.innerHTML += `<br><br>⚠️ <em>Error: ${escapeHtml(error.message)}</em>`;
+            if (!assistantMsgEl) {
+              addMessage('assistant', `⚠️ Error: ${error.message}`);
+            } else {
+              assistantMsgEl.innerHTML += `<br><br>⚠️ <em>Error: ${escapeHtml(error.message)}</em>`;
+            }
+            if (sendBtn) sendBtn.disabled = false;
+            if (inputEl) inputEl.focus();
           }
           isLoading = false;
-          if (sendBtn) sendBtn.disabled = false;
-          if (inputEl) inputEl.focus();
           loadYoutubeResults();
           saveCurrentChatSession(null, assistantText);
         }
       );
     } catch (error) {
       hideTyping();
-      addMessage('assistant', `❌ Error: ${error.message}`);
+      const isRateLimit = error.status === 429 || (error.message && error.message.includes('Rate limit'));
+      let waitSeconds = error.wait_seconds;
+      if (!waitSeconds && error.message) {
+        const match = error.message.match(/(\d+)\s*s/);
+        if (match) waitSeconds = parseInt(match[1], 10);
+      }
+      if (isRateLimit) {
+        waitSeconds = waitSeconds || 30;
+        addMessage('assistant', `⏳ **Rate Limit Reached (Max 7 msgs / min)**<br>${escapeHtml(error.message)}`);
+        handleRateLimitCooldown(waitSeconds);
+      } else {
+        addMessage('assistant', `❌ Error: ${error.message}`);
+        if (sendBtn) sendBtn.disabled = false;
+        if (inputEl) inputEl.focus();
+      }
       isLoading = false;
-      if (sendBtn) sendBtn.disabled = false;
-      if (inputEl) inputEl.focus();
       loadYoutubeResults();
       saveCurrentChatSession(null, assistantText);
     }

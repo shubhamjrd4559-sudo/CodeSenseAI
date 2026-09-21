@@ -84,7 +84,10 @@ const ApiClient = (() => {
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || `Request failed (${response.status})`);
+        const err = new Error(errJson.error || `Request failed (${response.status})`);
+        err.status = response.status;
+        err.wait_seconds = errJson.wait_seconds;
+        throw err;
       }
 
       const reader = response.body.getReader();

@@ -25,6 +25,7 @@ from .services.prompt_service import (
     CHAT_SYSTEM_PROMPT,
 )
 from .services.ollama_service import generate, chat as ollama_chat, OllamaServiceError
+from .utils.rate_limiter import get_client_ip, check_chat_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -329,7 +330,18 @@ def chat(request):
 
     Accepts follow-up questions about code or previous reviews.
     Passes current editor code + language as context to the LLM.
+    Protected by 7 messages per minute sliding window rate limiter.
     """
+    # Rate Limiting: Max 7 messages per 60 seconds per IP
+    client_ip = get_client_ip(request)
+    is_allowed, wait_seconds = check_chat_rate_limit(client_ip, max_requests=7, window_seconds=60)
+    if not is_allowed:
+        return JsonResponse({
+            'success': False,
+            'error': f'⏳ Rate limit reached: 1 minute me maximum 7 messages allow hain. Kripya {wait_seconds}s wait karein!',
+            'wait_seconds': wait_seconds
+        }, status=429)
+
     data, error = _parse_json_body(request)
     if error:
         return error

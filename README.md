@@ -72,6 +72,12 @@
 * **Zero Cold-Start Lag:** Engineered with cryptographically signed tokens (`django.core.signing`) to operate statelessly across serverless lambdas.
 * **No Database Locking:** Eliminates database latency and connection pool exhaustion during sudden spikes on Vercel.
 
+### 7. 🛡️ Sliding-Window IP Rate Limiter & Abuse Shield
+* **Automated Spam Mitigation:** Enforces a sliding-window rate limiting policy allowing a maximum of **7 messages per 60 seconds** per client IP.
+* **Real IP Edge Detection:** Extracts genuine user IP addresses behind Vercel edge reverse proxies (`HTTP_X_FORWARDED_FOR`) with fallback handling.
+* **Zero AI Token Waste:** Throttled requests are blocked immediately at the Django gateway with **HTTP 429** (`Too Many Requests`), protecting API keys and upstream LLM quotas.
+* **Live UI Cooldown Countdown:** The chat Send button turns into a dynamic countdown (`Wait 22s...`), temporarily disabling input until the cooldown window slides.
+
 ---
 
 ## 🏗️ Architecture & Data Flow
@@ -82,7 +88,7 @@
  │                                                                         │
  │   ┌──────────────────────┐  ┌─────────────────┐  ┌──────────────────┐  │
  │   │ Monaco Code Editor   │  │ VS Code Console │  │ AI Assistant UI  │  │
- │   │ (Syntax & Completion)│  │ (Inline Prompts)│  │ (SSE Streamer)   │  │
+ │   │ (Syntax & Completion)│  │ (Inline Prompts)│  │ (SSE + Cooldown) │  │
  │   └──────────┬───────────┘  └────────┬────────┘  └────────┬─────────┘  │
  └──────────────┼───────────────────────┼────────────────────┼─────────────┘
                 │                       │                    │
@@ -91,9 +97,14 @@
  │                       DJANGO REST API (VERCEL)                          │
  │                                                                         │
  │   ┌──────────────────────┐  ┌─────────────────┐  ┌──────────────────┐  │
- │   │ /api/run-code        │  │ /api/chat-stream│  │ /api/auth/*      │  │
- │   │ (Code Execution)     │  │ (AI Streaming)  │  │ (Stateless HMAC) │  │
+ │   │ /api/run-code        │  │ 7-Msg/Min Shield│  │ /api/auth/*      │  │
+ │   │ (Code Execution)     │  │ (Rate Limiter)  │  │ (Stateless HMAC) │  │
  │   └──────────┬───────────┘  └────────┬────────┘  └──────────────────┘  │
+ │              │                       ▼                                 │
+ │              │              ┌─────────────────┐                        │
+ │              │              │ /api/chat-stream│                        │
+ │              │              │ (SSE Streaming) │                        │
+ │              │              └────────┬────────┘                        │
  └──────────────┼───────────────────────┼──────────────────────────────────┘
                 │                       │
          ┌──────┴──────┐         ┌──────┴──────────────────────────┐
@@ -113,6 +124,7 @@
 | **Frontend Framework** | Vanilla ES6+ JavaScript, Semantic HTML5, Custom CSS3 Design System |
 | **Code Editor** | Monaco Editor (VS Code core engine) |
 | **Backend Framework** | Django 6.0, Django REST Framework, Python 3.10+ |
+| **Rate Limiting & Security** | Sliding-Window IP Throttler (7 msgs/60s via Django Memory Cache) |
 | **AI LLM Inference** | xKiro API (Qwen 3.8 Omni Flash:free), NVIDIA NIM (Llama 3.1 8B) |
 | **Code Execution** | Judge0 CE (Dockerized remote compiler engine) |
 | **Streaming Protocol** | Server-Sent Events (SSE) via `StreamingHttpResponse` |
@@ -246,6 +258,14 @@ http://127.0.0.1:8000
 }
 ```
 * **Response:** Tokens streamed via SSE chunk format (`data: {"token": "..."}\n\n`).
+* **Rate Limit Reached (HTTP 429):**
+```json
+{
+  "success": false,
+  "error": "⏳ Rate limit reached: 1 minute me maximum 7 messages allow hain. Kripya 22s wait karein!",
+  "wait_seconds": 22
+}
+```
 
 ---
 
@@ -265,8 +285,9 @@ This repository is optimized for deployment on Vercel:
 
 ## 🗺️ Future Roadmap
 
+- [x] **Sliding-Window IP Rate Limiter:** 7 messages / 60s abuse shield with live UI cooldown countdown.
 - [ ] **RAG (Retrieval-Augmented Generation) Pipeline:** Integrating vector embeddings (Pinecone) with a curated DSA & algorithmic pattern library for zero-hallucination code reviews.
-- [ ] **Upstash Redis Caching:** Low-latency caching for frequent code queries and sliding-window rate limiting.
+- [ ] **Upstash Redis Caching:** Low-latency caching for frequent code queries and cross-region rate limiting.
 - [ ] **Multi-Tab File Editor:** Support simultaneous multi-file workspaces and tabs.
 - [ ] **Real-Time Collaborative Coding:** WebRTC / WebSocket powered peer-to-peer live pair programming.
 

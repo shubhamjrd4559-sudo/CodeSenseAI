@@ -283,3 +283,25 @@ class YoutubeSearchTests(TestCase):
         self.assertEqual(data['videos'][0]['views'], '100K views')
         self.assertEqual(data['videos'][0]['published'], '1 year ago')
         self.assertEqual(data['videos'][0]['link'], 'https://www.youtube.com/watch?v=12345')
+
+
+class RateLimiterTests(TestCase):
+    """Tests for the IP rate limiter."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_allows_up_to_7_requests_then_blocks(self):
+        from api.utils.rate_limiter import check_chat_rate_limit
+
+        ip = '192.168.1.100'
+        for _ in range(7):
+            allowed, wait = check_chat_rate_limit(ip, max_requests=7, window_seconds=60)
+            self.assertTrue(allowed)
+            self.assertEqual(wait, 0)
+
+        # 8th request should be blocked
+        allowed, wait = check_chat_rate_limit(ip, max_requests=7, window_seconds=60)
+        self.assertFalse(allowed)
+        self.assertGreater(wait, 0)

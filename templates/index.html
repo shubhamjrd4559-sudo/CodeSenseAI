@@ -239,13 +239,33 @@
 
       <section class="panel editor-panel" id="editor-panel">
         <div class="panel-header editor-toolbar">
-          <span class="panel-title" id="editor-title-container">
-            Code Editor
-            <span class="active-file-badge" id="active-file-badge" style="display: none;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12" style="vertical-align:middle;margin-right:2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span id="active-filename-display"></span>
+          <div class="editor-header-left" style="display: flex; align-items: center; gap: 14px;">
+            <div class="problem-list-nav-bar" id="problem-list-nav-bar">
+              <button type="button" class="problem-list-btn" id="open-problem-list-btn" title="Click to view DSA Problem List & Practice on LeetCode">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16" class="problem-list-icon">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <circle cx="4" cy="6" r="1.5" fill="currentColor"/>
+                  <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
+                  <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+                </svg>
+                <span class="problem-list-text">Problem List</span>
+              </button>
+              <div class="problem-list-quick-nav">
+                <button type="button" class="nav-arrow-btn" id="prev-topic-btn" title="Previous Topic">&lt;</button>
+                <button type="button" class="nav-arrow-btn" id="next-topic-btn" title="Next Topic">&gt;</button>
+              </div>
+            </div>
+
+            <span class="panel-title" id="editor-title-container">
+              Code Editor
+              <span class="active-file-badge" id="active-file-badge" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12" style="vertical-align:middle;margin-right:2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span id="active-filename-display"></span>
+              </span>
             </span>
-          </span>
+          </div>
           <div class="toolbar-actions">
             <span class="char-count" id="editor-info">Ln 1, Col 1</span>
             <button class="icon-button compact" id="clear-editor-btn" title="Clear editor" aria-label="Clear editor">
@@ -422,11 +442,94 @@
     </section>
   </div>
 
+  <!-- DSA Problem List Modal Overlay -->
+  <div class="modal-backdrop" id="problem-list-modal" hidden style="display: none;">
+    <section class="problem-list-modal-container" role="dialog" aria-modal="true" aria-labelledby="problem-list-title">
+      <!-- Header -->
+      <div class="pl-modal-header">
+        <div class="pl-header-brand">
+          <div class="pl-brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <circle cx="4" cy="6" r="1.5" fill="currentColor"/>
+              <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
+              <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+            </svg>
+          </div>
+          <div>
+            <h2 id="problem-list-title" class="pl-modal-title">THE DSA PATTERN PLAYBOOK</h2>
+            <p class="pl-modal-subtitle">Gold mine DSA questions &amp; direct LeetCode practice links</p>
+          </div>
+        </div>
+
+        <div class="pl-header-actions">
+          <div class="pl-topic-nav-controls">
+            <button type="button" class="btn btn-secondary compact pl-nav-btn" id="modal-prev-topic-btn" title="Previous Topic">
+              &larr; Prev
+            </button>
+            <select id="pl-topic-select" class="control-select pl-topic-dropdown" aria-label="Select DSA Topic">
+              <!-- Dynamically populated topics -->
+            </select>
+            <button type="button" class="btn btn-secondary compact pl-nav-btn" id="modal-next-topic-btn" title="Next Topic">
+              Next &rarr;
+            </button>
+          </div>
+          <button class="icon-button compact login-close" id="problem-list-close-btn" type="button" aria-label="Close Problem List">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter / Search Bar -->
+      <div class="pl-filter-bar">
+        <div class="pl-search-wrapper">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" class="pl-search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="pl-search-input" placeholder="Search problem title or LC #..." class="pl-search-input">
+        </div>
+
+        <div class="pl-difficulty-filters">
+          <span class="pl-filter-label">Difficulty:</span>
+          <button class="pl-diff-chip active" data-diff="all">All</button>
+          <button class="pl-diff-chip diff-easy" data-diff="Easy">Easy</button>
+          <button class="pl-diff-chip diff-medium" data-diff="Medium">Medium</button>
+          <button class="pl-diff-chip diff-hard" data-diff="Hard">Hard</button>
+        </div>
+      </div>
+
+      <!-- Active Topic Banner / Concept Card -->
+      <div class="pl-topic-banner" id="pl-topic-banner">
+        <!-- Dynamic topic content -->
+      </div>
+
+      <!-- Questions Table -->
+      <div class="pl-table-wrapper">
+        <table class="pl-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th>Problem Title</th>
+              <th style="width: 90px;">LC #</th>
+              <th style="width: 100px;">Difficulty</th>
+              <th>Key Pattern</th>
+              <th style="width: 120px; text-align: center;">LeetCode</th>
+            </tr>
+          </thead>
+          <tbody id="pl-questions-tbody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
   <script src="{% static 'js/theme.js' %}"></script>
   <script src="{% static 'js/apiClient.js' %}"></script>
   <script src="{% static 'js/editor.js' %}"></script>
   <script src="{% static 'js/chat.js' %}"></script>
+  <script src="{% static 'js/problemList.js' %}"></script>
   <script src="{% static 'js/app.js' %}"></script>
 
   <!-- Backdrop: click outside dropdown to close it -->

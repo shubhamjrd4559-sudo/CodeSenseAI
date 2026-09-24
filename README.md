@@ -78,6 +78,24 @@
 * **Zero AI Token Waste:** Throttled requests are blocked immediately at the Django gateway with **HTTP 429** (`Too Many Requests`), protecting API keys and upstream LLM quotas.
 * **Live UI Cooldown Countdown:** The chat Send button turns into a dynamic countdown (`Wait 22s...`), temporarily disabling input until the cooldown window slides.
 
+### 8. 📚 DSA Pattern Playbook & LeetCode Practice Module
+* **THE DSA PATTERN PLAYBOOK Integration:** Features a curated library of **75+ top interview DSA problems** structured from the Playbook PDF across **13 core algorithmic categories**:
+  1. *Arrays & Hashing* (Two Sum, Contains Duplicate, Group Anagrams, etc.)
+  2. *Two Pointers* (3Sum, Container With Most Water, Valid Palindrome, etc.)
+  3. *Sliding Window* (Longest Substring Without Repeating, Min Window Substring, etc.)
+  4. *Stack* (Valid Parentheses, Min Stack, Monotonic Stack, Largest Histogram)
+  5. *Binary Search* (Search Rotated Array, 2D Matrix, Koko Bananas)
+  6. *Linked List* (Reverse List, Cycle Detection, Merge K Sorted Lists)
+  7. *Trees* (Invert Tree, Level Order Traversal, Validate BST, Max Path Sum)
+  8. *Tries* (Implement Trie, Word Search II)
+  9. *Heap / Priority Queue* (Kth Largest, Median Stream, Task Scheduler)
+  10. *Backtracking* (Subsets, Combination Sum, N-Queens, Sudoku Solver)
+  11. *Graphs* (Number of Islands, Rotting Oranges, Course Schedule)
+  12. *Dynamic Programming* (Climbing Stairs, House Robber, Coin Change, LIS)
+* **Direct LeetCode Practice Links:** One-click **Practice on LeetCode ↗** links opening the exact problem page on LeetCode (`https://leetcode.com/problems/<slug>/`).
+* **Header Bar & Full-Page Navigation:** Accessible via a dark-themed **`[≡] Problem List < >`** toolbar bar above the Code Editor with a **`← Back to Dashboard`** button for smooth navigation.
+* **Key Patterns & Takeaways:** Includes essential interview takeaways, pattern summaries, and clean light-weight typography.
+
 ---
 
 ## 🏗️ Architecture & Data Flow
@@ -286,6 +304,7 @@ This repository is optimized for deployment on Vercel:
 ## 🗺️ Future Roadmap
 
 - [x] **Sliding-Window IP Rate Limiter:** 7 messages / 60s abuse shield with live UI cooldown countdown.
+- [x] **DSA Pattern Playbook & LeetCode Integration:** 75+ top interview questions across 13 topics with direct LeetCode links & full-page dashboard navigation.
 - [ ] **RAG (Retrieval-Augmented Generation) Pipeline:** Integrating vector embeddings (Pinecone) with a curated DSA & algorithmic pattern library for zero-hallucination code reviews.
 - [ ] **Upstash Redis Caching:** Low-latency caching for frequent code queries and cross-region rate limiting.
 - [ ] **Multi-Tab File Editor:** Support simultaneous multi-file workspaces and tabs.

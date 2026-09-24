@@ -253,7 +253,6 @@ const ProblemList = (() => {
   ];
 
   let currentTopicIndex = 0;
-  let isPageViewActive = false;
 
   function getLeetCodeUrl(q) {
     if (q.slug) {
@@ -273,8 +272,15 @@ const ProblemList = (() => {
   function setupDomEvents() {
     // Toolbar Open Problem List button
     const openBtn = document.getElementById("open-problem-list-btn");
+    const navBar = document.getElementById("problem-list-nav-bar");
     if (openBtn) {
-      openBtn.addEventListener("click", () => {
+      openBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openPageView();
+      });
+    }
+    if (navBar) {
+      navBar.addEventListener("click", () => {
         openPageView();
       });
     }
@@ -347,38 +353,39 @@ const ProblemList = (() => {
   }
 
   function openPageView() {
-    isPageViewActive = true;
     const pageContainer = document.getElementById("problem-list-page-container");
     const monacoWrapper = document.getElementById("monaco-wrapper");
     const outputPanel = document.getElementById("output-panel");
 
     if (pageContainer) {
-      pageContainer.style.display = "flex";
+      pageContainer.style.setProperty("display", "flex", "important");
+      pageContainer.style.setProperty("flex", "1", "important");
+      pageContainer.style.setProperty("height", "100%", "important");
+      pageContainer.style.setProperty("min-height", "0", "important");
     }
     if (monacoWrapper) {
-      monacoWrapper.style.display = "none";
+      monacoWrapper.style.setProperty("display", "none", "important");
     }
     if (outputPanel) {
-      outputPanel.style.display = "none";
+      outputPanel.style.setProperty("display", "none", "important");
     }
 
     renderPageTopicContent();
   }
 
   function closePageView() {
-    isPageViewActive = false;
     const pageContainer = document.getElementById("problem-list-page-container");
     const monacoWrapper = document.getElementById("monaco-wrapper");
     const outputPanel = document.getElementById("output-panel");
 
     if (pageContainer) {
-      pageContainer.style.display = "none";
+      pageContainer.style.setProperty("display", "none", "important");
     }
     if (monacoWrapper) {
-      monacoWrapper.style.display = "block";
+      monacoWrapper.style.setProperty("display", "block", "important");
     }
     if (outputPanel) {
-      outputPanel.style.display = "flex";
+      outputPanel.style.setProperty("display", "flex", "important");
     }
   }
 
@@ -538,7 +545,7 @@ const ProblemList = (() => {
           <td class="pl-cell-action">
             <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-leetcode-practice">
               <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="margin-right:4px;">
-                <path d="M13.5 3H21v7.5h-2V6.41l-9.79 9.8-1.42-1.42 9.8-9.79H13.5V3zM5 5h6v2H5v12h12v-6h2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 0 1 2-2z"/>
+                <path d="M13.5 3H21v7.5h-2V6.41l-9.79 9.8-1.42-1.42 9.8-9.79H13.5V3zM5 5h6v2H5v12h12v-6h2v6a2 2 0 01-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
               </svg>
               Practice
             </a>
@@ -560,7 +567,12 @@ const ProblemList = (() => {
       .replace(/'/g, "&#039;");
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  // Safe init execution even if DOMContentLoaded has already fired
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(init, 50);
+  } else {
+    document.addEventListener("DOMContentLoaded", init);
+  }
 
   return {
     init,
@@ -572,3 +584,6 @@ const ProblemList = (() => {
     dsaTopics
   };
 })();
+
+// Attach globally to window
+window.ProblemList = ProblemList;

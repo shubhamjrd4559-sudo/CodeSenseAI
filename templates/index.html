@@ -240,9 +240,9 @@
       <section class="panel editor-panel" id="editor-panel">
         <div class="panel-header editor-toolbar">
           <div class="editor-header-left" style="display: flex; align-items: center; gap: 12px;">
-            <!-- Problem List Button Bar (Styled in Dark Theme) -->
-            <div class="problem-list-nav-bar" id="problem-list-nav-bar" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 6px; padding: 3px 8px; box-sizing: border-box;">
-              <button type="button" class="problem-list-btn" id="open-problem-list-btn" title="Click to view DSA Problem List & Practice on LeetCode" style="display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; color: #ffffff; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 2px 4px; outline: none;">
+            <!-- Problem List Button Bar (Styled in Dark Theme with direct onclick handlers) -->
+            <div class="problem-list-nav-bar" id="problem-list-nav-bar" onclick="if(window.ProblemList) ProblemList.openPageView();" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 6px; padding: 3px 8px; box-sizing: border-box; cursor: pointer;">
+              <button type="button" class="problem-list-btn" id="open-problem-list-btn" onclick="if(window.ProblemList) ProblemList.openPageView(); event.stopPropagation();" title="Click to view DSA Problem List & Practice on LeetCode" style="display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; color: #ffffff; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 2px 4px; outline: none;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2.2" width="15" height="15" style="vertical-align: middle;">
                   <line x1="8" y1="6" x2="21" y2="6"/>
                   <line x1="8" y1="12" x2="21" y2="12"/>
@@ -254,8 +254,8 @@
                 <span style="color: #ffffff; font-weight: 600; letter-spacing: 0.2px;">Problem List</span>
               </button>
               <div style="display: inline-flex; align-items: center; gap: 2px; border-left: 1px solid rgba(255, 255, 255, 0.2); padding-left: 6px; margin-left: 2px;">
-                <button type="button" class="nav-arrow-btn" id="prev-topic-btn" title="Previous Topic Page" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; font-weight: 700; cursor: pointer; padding: 1px 6px; border-radius: 4px; outline: none;">&lt;</button>
-                <button type="button" class="nav-arrow-btn" id="next-topic-btn" title="Next Topic Page" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; font-weight: 700; cursor: pointer; padding: 1px 6px; border-radius: 4px; outline: none;">&gt;</button>
+                <button type="button" class="nav-arrow-btn" id="prev-topic-btn" onclick="if(window.ProblemList) { ProblemList.navigateTopic(-1); ProblemList.openPageView(); } event.stopPropagation();" title="Previous Topic Page" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; font-weight: 700; cursor: pointer; padding: 1px 6px; border-radius: 4px; outline: none;">&lt;</button>
+                <button type="button" class="nav-arrow-btn" id="next-topic-btn" onclick="if(window.ProblemList) { ProblemList.navigateTopic(1); ProblemList.openPageView(); } event.stopPropagation();" title="Next Topic Page" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; font-weight: 700; cursor: pointer; padding: 1px 6px; border-radius: 4px; outline: none;">&gt;</button>
               </div>
             </div>
 
@@ -279,7 +279,7 @@
         <div class="problem-list-page-container" id="problem-list-page-container" style="display: none; flex-direction: column; flex: 1; background: #0b0f17; color: #e2e8f0; overflow-y: auto;">
           <!-- Page View Header Bar -->
           <div class="pl-page-header-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: #121824; border-bottom: 1px solid rgba(255, 255, 255, 0.1); flex-wrap: wrap; gap: 10px;">
-            <button type="button" class="btn btn-secondary back-to-dashboard-btn" id="back-to-dashboard-btn" style="display: inline-flex; align-items: center; gap: 7px; background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">
+            <button type="button" class="btn btn-secondary back-to-dashboard-btn" id="back-to-dashboard-btn" onclick="if(window.ProblemList) ProblemList.closePageView();" style="display: inline-flex; align-items: center; gap: 7px; background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16">
                 <line x1="19" y1="12" x2="5" y2="12"/>
                 <polyline points="12 19 5 12 12 5"/>

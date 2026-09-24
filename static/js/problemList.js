@@ -482,11 +482,11 @@ const ProblemList = (() => {
         <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
           <td style="padding:12px 16px; color:rgba(255,255,255,0.4); font-family:monospace;">${escapeHtml(q.num)}</td>
           <td style="padding:12px 16px;">
-            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" style="color:#ffffff; font-weight:600; text-decoration:none;" onmouseover="this.style.color='#00f2fe'" onmouseout="this.style.color='#ffffff'">
+            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" style="color:#e2e8f0; font-size:13.5px; font-weight:500; text-decoration:none; transition:color 0.2s ease;" onmouseover="this.style.color='#00f2fe'" onmouseout="this.style.color='#e2e8f0'">
               ${escapeHtml(q.title)}
             </a>
           </td>
-          <td style="padding:12px 16px;"><span class="pl-lc-tag">LC #${q.lc}</span></td>
+          <td style="padding:12px 16px; text-align:center; white-space:nowrap;"><span class="pl-lc-tag">LC #${q.lc}</span></td>
           <td style="padding:12px 16px;"><span class="pl-diff-badge ${diffClass}">${q.difficulty}</span></td>
           <td style="padding:12px 16px; color:rgba(255,255,255,0.7); font-size:12px;">${escapeHtml(q.pattern)}</td>
           <td style="padding:12px 16px; text-align:center;">

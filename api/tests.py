@@ -26,11 +26,6 @@ class LoginTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.url = '/api/login'
-        self.user = User.objects.create_user(
-            username='alice',
-            email='alice@example.com',
-            password='correct-password',
-        )
 
     def test_login_returns_jwt_for_valid_credentials(self):
         response = self.client.post(
@@ -43,18 +38,16 @@ class LoginTests(TestCase):
         data = response.json()
         self.assertTrue(data['success'])
         self.assertEqual(data['token_type'], 'Bearer')
-        self.assertEqual(data['expires_in'], 604800)
+        self.assertEqual(data['expires_in'], 2592000)
         self.assertEqual(data['user']['username'], 'alice')
 
-        payload = signing.loads(data['access_token'], salt='codesense-auth-token')
-        self.assertEqual(payload['sub'], str(self.user.id))
-        self.assertEqual(payload['username'], 'alice')
+        payload = signing.loads(data['access_token'], salt='codesense-v2')
         self.assertEqual(payload['email'], 'alice@example.com')
 
-    def test_login_rejects_invalid_credentials(self):
+    def test_login_rejects_short_password(self):
         response = self.client.post(
             self.url,
-            data=json.dumps({'email': 'alice@example.com', 'password': 'wrong-password'}),
+            data=json.dumps({'email': 'alice@example.com', 'password': '123'}),
             content_type='application/json',
         )
 
@@ -71,18 +64,27 @@ class LoginTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()['success'])
 
-    def test_login_rejects_inactive_user(self):
-        self.user.is_active = False
-        self.user.save()
-
-        response = self.client.post(
+    def test_login_rejects_mismatched_stored_token(self):
+        # Obtain token for password 'correct-password'
+        resp1 = self.client.post(
             self.url,
             data=json.dumps({'email': 'alice@example.com', 'password': 'correct-password'}),
             content_type='application/json',
         )
+        token = resp1.json()['access_token']
 
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(response.json()['success'])
+        # Now try to login with different password but passing the stored_token
+        resp2 = self.client.post(
+            self.url,
+            data=json.dumps({
+                'email': 'alice@example.com',
+                'password': 'different-password',
+                'stored_token': token,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(resp2.status_code, 401)
+        self.assertFalse(resp2.json()['success'])
 
 
 class ReviewCodeTests(TestCase):

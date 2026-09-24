@@ -55,7 +55,7 @@ def _get_provider_config() -> tuple[str, str, str, str]:
 
     if nvidia_key and nvidia_key not in ('', 'put_your_key_here'):
         url = 'https://integrate.api.nvidia.com/v1/chat/completions'
-        default_model = os.environ.get('LLM_CHAT_MODEL') or os.environ.get('LLM_MODEL') or 'meta/llama-3.1-8b-instruct'
+        default_model = os.environ.get('LLM_CHAT_MODEL') or os.environ.get('LLM_MODEL') or 'meta/llama-3.2-11b-vision-instruct'
         return nvidia_key, url, default_model, 'NVIDIA'
 
     raise OllamaServiceError(
@@ -105,6 +105,10 @@ def _post_llm(messages: list[dict], model: str, max_tokens: int, temperature: fl
         status = e.response.status_code
         body   = e.response.text[:300]
         logger.error(f'{provider_name} HTTP {status}: {body}')
+        if status == 410:
+            raise OllamaServiceError(
+                f'The configured {provider_name} model ({chosen_model}) is deprecated. Please update LLM_MODEL in .env.'
+            )
         if status == 401:
             raise OllamaServiceError(
                 f'Invalid {provider_name} API key. Please check your {provider_name.upper()}_API_KEY in settings.'
@@ -215,6 +219,17 @@ def chat_stream(messages: list[dict], system_prompt: str = ''):
                             yield token
                     except Exception:
                         pass
+    except requests.exceptions.HTTPError as e:
+        status = getattr(e.response, 'status_code', 500)
+        logger.error(f'{provider_name} stream HTTP error {status}: {e}')
+        if status == 410:
+            yield f'\n❌ Error: Model ({model}) deprecated hai. Settings me naya model select karein.'
+        elif status == 401:
+            yield f'\n❌ Error: Invalid {provider_name} API Key.'
+        elif status == 429:
+            yield f'\n❌ Error: AI rate limit hit. Kripya thoda wait karke dobara try karein.'
+        else:
+            yield f'\n❌ Error: AI Server error ({status}).'
     except Exception as e:
         logger.exception(f'{provider_name} stream exception: {e}')
         yield f'\n❌ Error: {str(e)}'

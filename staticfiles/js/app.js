@@ -178,41 +178,116 @@ const App = (() => {
     }
   }
 
-  function detectInputPrompt(code) {
-    if (!code) return null;
+  function detectInputPrompts(code) {
+    if (!code) return [];
 
-    // 1. C/C++: cout << "prompt" before cin / scanf
-    const cppCout = /cout\s*<<\s*["']([^"'\n]+)["']/i.exec(code);
-    const hasCin = /\bcin\s*>>|\bscanf\s*\(|\bgetline\s*\(/i.test(code);
-    if (cppCout && hasCin) return cppCout[1];
+    const prompts = [];
+    const lines = code.split('\n');
+    let pendingPrompt = null;
 
-    const cPrintf = /printf\s*\(\s*["']([^"'\n%]+)["']/i.exec(code);
-    if (cPrintf && hasCin) return cPrintf[1];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
 
-    // 2. Python: input("prompt")
-    const pyInput = /input\s*\(\s*["']([^"'\n]+)["']\s*\)/i.exec(code);
-    if (pyInput) return pyInput[1];
-    if (/\binput\s*\(/i.test(code)) return 'Enter input: ';
+      // 1. C/C++ cout << "..."
+      const coutMatch = /cout\s*<<\s*["']([^"'\n]+)["']/i.exec(line);
+      if (coutMatch) {
+        pendingPrompt = coutMatch[1];
+      }
 
-    // 3. Java: System.out.print("prompt") with Scanner
-    const javaPrint = /System\.out\.print(?:ln)?\s*\(\s*["']([^"'\n]+)["']\s*\)/i.exec(code);
-    const hasScanner = /\bScanner\b|\bBufferedReader\b/i.test(code);
-    if (javaPrint && hasScanner) return javaPrint[1];
+      // C printf("...")
+      const printfMatch = /printf\s*\(\s*["']([^"'\n%]+)["']/i.exec(line);
+      if (printfMatch) {
+        pendingPrompt = printfMatch[1];
+      }
 
-    // 4. C#: Console.Write("prompt") with Console.Read
-    const csWrite = /Console\.Write(?:Line)?\s*\(\s*["']([^"'\n]+)["']\s*\)/i.exec(code);
-    const hasConsoleRead = /\bConsole\.Read/i.test(code);
-    if (csWrite && hasConsoleRead) return csWrite[1];
+      // Java System.out.print("...")
+      const javaPrint = /System\.out\.print(?:ln)?\s*\(\s*["']([^"'\n]+)["']/i.exec(line);
+      if (javaPrint) {
+        pendingPrompt = javaPrint[1];
+      }
 
-    // Generic fallback if input keyword exists without literal prompt string
-    if (hasCin || hasScanner || hasConsoleRead) {
-      return 'Enter input: ';
+      // C# Console.Write("...")
+      const csWrite = /Console\.Write(?:Line)?\s*\(\s*["']([^"'\n]+)["']/i.exec(line);
+      if (csWrite) {
+        pendingPrompt = csWrite[1];
+      }
+
+      // Check for C/C++ cin >> var1 >> var2
+      const cinMatch = line.match(/cin\s*>>\s*([a-zA-Z0-9_]+(?:\s*>>\s*[a-zA-Z0-9_]+)*)/i);
+      if (cinMatch) {
+        const varCount = (cinMatch[1].match(/>>/g) || []).length + 1;
+        if (pendingPrompt) {
+          prompts.push(pendingPrompt);
+          for (let k = 1; k < varCount; k++) {
+            prompts.push(`Enter input ${prompts.length + 1}: `);
+          }
+          pendingPrompt = null;
+        } else {
+          for (let k = 0; k < varCount; k++) {
+            prompts.push(`Enter input ${prompts.length + 1}: `);
+          }
+        }
+      }
+
+      // C scanf(...)
+      const scanfMatch = line.match(/\bscanf\s*\(/i);
+      if (scanfMatch) {
+        if (pendingPrompt) {
+          prompts.push(pendingPrompt);
+          pendingPrompt = null;
+        } else {
+          prompts.push(`Enter input ${prompts.length + 1}: `);
+        }
+      }
+
+      // Python input("prompt")
+      const pyMatches = Array.from(line.matchAll(/input\s*\(\s*(?:["']([^"'\n]*)["'])?\s*\)/gi));
+      for (const pyMatch of pyMatches) {
+        const promptStr = pyMatch[1] || `Enter input ${prompts.length + 1}: `;
+        prompts.push(promptStr);
+      }
+
+      // Java Scanner / BufferedReader read
+      if (/\b(?:sc|scanner|reader|br)\.next/i.test(line)) {
+        if (pendingPrompt) {
+          prompts.push(pendingPrompt);
+          pendingPrompt = null;
+        } else {
+          prompts.push(`Enter input ${prompts.length + 1}: `);
+        }
+      }
+
+      // C# Console.Read
+      if (/\bConsole\.Read/i.test(line)) {
+        if (pendingPrompt) {
+          prompts.push(pendingPrompt);
+          pendingPrompt = null;
+        } else {
+          prompts.push(`Enter input ${prompts.length + 1}: `);
+        }
+      }
     }
 
-    return null;
+    // Fallback if no specific prompt found but input statements exist
+    if (prompts.length === 0) {
+      if (/\bcin\s*>>|\bscanf\s*\(|\bgetline\s*\(/i.test(code)) {
+        const cinMatches = code.match(/cin\s*>>/gi);
+        const count = cinMatches ? cinMatches.length : 1;
+        for (let c = 1; c <= count; c++) {
+          prompts.push(`Enter input ${c}: `);
+        }
+      } else if (/\binput\s*\(/i.test(code)) {
+        const pyCount = (code.match(/\binput\s*\(/gi) || []).length;
+        for (let c = 1; c <= pyCount; c++) {
+          prompts.push(`Enter input ${c}: `);
+        }
+      }
+    }
+
+    return prompts;
   }
 
-  async function executeAndRenderTerminal(code, language, stdin, cmd, promptText = '') {
+  async function executeAndRenderTerminal(code, language, stdin, cmd, prompts = []) {
     const runBtn = document.getElementById('run-btn');
     const outputEl = document.getElementById('output-content');
     const statusEl = document.getElementById('output-status');
@@ -245,12 +320,16 @@ const App = (() => {
 
       let stdout = (result.stdout || '').trimEnd();
 
-      // Avoid repeating the prompt if stdout echoes it back
-      if (promptText && stdout) {
-        const pTrimmed = promptText.trim();
-        if (stdout.startsWith(pTrimmed)) {
-          stdout = stdout.substring(pTrimmed.length).replace(/^[\s:]+/, '');
-        }
+      // Avoid repeating prompts if stdout echoes them back
+      if (prompts && prompts.length > 0 && stdout) {
+        prompts.forEach(p => {
+          const pTrimmed = (p || '').trim();
+          if (pTrimmed) {
+            const escaped = pTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            stdout = stdout.replace(new RegExp(escaped + '\\s*', 'g'), '');
+          }
+        });
+        stdout = stdout.trim();
       }
 
       let html = '';
@@ -323,47 +402,62 @@ const App = (() => {
 
     const language = document.getElementById('language-select')?.value || 'python';
     const cmd = getTerminalCommand(language);
-    const promptText = detectInputPrompt(code);
+    const prompts = detectInputPrompts(code);
 
-    if (promptText) {
-      // INTERACTIVE MODE: Render prompt line with inline input & wait for Enter!
-      outputEl.innerHTML = `
-        <div class="terminal-command-line">
-          <span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-command-text">${escapeHtml(cmd)}</span>
-        </div>
-        <div class="terminal-input-line" id="term-active-input-row">
+    outputEl.innerHTML = `
+      <div class="terminal-command-line">
+        <span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-command-text">${escapeHtml(cmd)}</span>
+      </div>
+    `;
+
+    if (prompts.length > 0) {
+      const collectedInputs = [];
+
+      function askPrompt(index) {
+        if (index >= prompts.length) {
+          // All inputs collected! Combine with newlines and execute
+          const fullStdin = collectedInputs.join('\n');
+          executeAndRenderTerminal(code, language, fullStdin, cmd, prompts);
+          return;
+        }
+
+        const promptText = prompts[index];
+        const inputRowId = `term-input-row-${index}`;
+        const inputId = `term-input-${index}`;
+
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'terminal-input-line';
+        rowDiv.id = inputRowId;
+        rowDiv.innerHTML = `
           <span class="terminal-input-prompt">${escapeHtml(promptText)}</span>
-          <input type="text" class="terminal-inline-input" id="term-inline-input" autofocus autocomplete="off" spellcheck="false" placeholder="type value and press Enter..." />
-        </div>
-      `;
+          <input type="text" class="terminal-inline-input" id="${inputId}" autofocus autocomplete="off" spellcheck="false" placeholder="type value and press Enter..." />
+        `;
+        outputEl.appendChild(rowDiv);
+        outputEl.scrollTop = outputEl.scrollHeight;
 
-      const inputEl = document.getElementById('term-inline-input');
-      if (inputEl) {
-        // Immediate focus
-        setTimeout(() => inputEl.focus(), 50);
+        const inputEl = document.getElementById(inputId);
+        if (inputEl) {
+          setTimeout(() => inputEl.focus(), 30);
 
-        inputEl.addEventListener('keydown', async (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            const val = inputEl.value;
-            // Freeze input row as typed text
-            const row = document.getElementById('term-active-input-row');
-            if (row) {
-              row.className = 'terminal-line';
-              row.innerHTML = `<span class="terminal-input-prompt">${escapeHtml(promptText)}</span><span class="output-stdin-echo">${escapeHtml(val)}</span>`;
+          inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const val = inputEl.value;
+              // Freeze this input row as text echo
+              rowDiv.className = 'terminal-line';
+              rowDiv.innerHTML = `<span class="terminal-input-prompt">${escapeHtml(promptText)}</span> <span class="output-stdin-echo">${escapeHtml(val)}</span>`;
+              collectedInputs.push(val);
+              // Move to next prompt!
+              askPrompt(index + 1);
             }
-            await executeAndRenderTerminal(code, language, val, cmd, promptText);
-          }
-        });
+          });
+        }
       }
+
+      askPrompt(0);
     } else {
       // NON-INTERACTIVE MODE: Run immediately
-      outputEl.innerHTML = `
-        <div class="terminal-command-line">
-          <span class="terminal-prompt">PS C:\\workspace&gt;</span> <span class="terminal-command-text">${escapeHtml(cmd)}</span>
-        </div>
-      `;
-      await executeAndRenderTerminal(code, language, '', cmd, '');
+      executeAndRenderTerminal(code, language, '', cmd, []);
     }
   }
 
@@ -1123,7 +1217,8 @@ const App = (() => {
 
     // Clicking anywhere in the terminal focuses the active inline input
     document.getElementById('output-content')?.addEventListener('click', () => {
-      document.getElementById('term-inline-input')?.focus();
+      const activeInput = document.querySelector('.terminal-inline-input');
+      activeInput?.focus();
     });
 
     function toggleOutput(event) {

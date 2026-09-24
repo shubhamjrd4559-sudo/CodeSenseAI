@@ -1,7 +1,8 @@
 /**
  * ProblemList.js
  * Manages the DSA Pattern Playbook Problem List module for CodeSense AI.
- * Renders problem sets from the PDF, handles direct LeetCode links, and enables topic pagination.
+ * Handles page view switching, topic pagination, direct LeetCode question links,
+ * and the "Back to Dashboard" navigation control.
  */
 const ProblemList = (() => {
   const dsaTopics = [
@@ -252,8 +253,7 @@ const ProblemList = (() => {
   ];
 
   let currentTopicIndex = 0;
-  let activeDifficulty = "all";
-  let searchQuery = "";
+  let isPageViewActive = false;
 
   function getLeetCodeUrl(q) {
     if (q.slug) {
@@ -264,39 +264,67 @@ const ProblemList = (() => {
 
   function init() {
     setupDomEvents();
-    populateTopicDropdown();
-    renderCurrentTopic();
+    populatePageTopicDropdown();
+    populateModalTopicDropdown();
+    renderPageTopicContent();
+    renderModalTopicContent();
   }
 
   function setupDomEvents() {
-    // Open modal button in editor toolbar
+    // Toolbar Open Problem List button
     const openBtn = document.getElementById("open-problem-list-btn");
     if (openBtn) {
-      openBtn.addEventListener("click", openModal);
+      openBtn.addEventListener("click", () => {
+        openPageView();
+      });
     }
 
-    // Quick navigation arrows in editor toolbar
+    // Quick navigation arrows in toolbar
     const prevArrow = document.getElementById("prev-topic-btn");
     const nextArrow = document.getElementById("next-topic-btn");
     if (prevArrow) {
-      prevArrow.addEventListener("click", () => {
+      prevArrow.addEventListener("click", (e) => {
+        e.stopPropagation();
         navigateTopic(-1);
-        openModal();
+        openPageView();
       });
     }
     if (nextArrow) {
-      nextArrow.addEventListener("click", () => {
+      nextArrow.addEventListener("click", (e) => {
+        e.stopPropagation();
         navigateTopic(1);
-        openModal();
+        openPageView();
       });
     }
 
-    // Modal controls
+    // "Back to Dashboard" button
+    const backBtn = document.getElementById("back-to-dashboard-btn");
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        closePageView();
+      });
+    }
+
+    // Page View Prev / Next navigation
+    const pagePrevBtn = document.getElementById("page-prev-btn");
+    const pageNextBtn = document.getElementById("page-next-btn");
+    if (pagePrevBtn) pagePrevBtn.addEventListener("click", () => navigateTopic(-1));
+    if (pageNextBtn) pageNextBtn.addEventListener("click", () => navigateTopic(1));
+
+    // Page View Topic Select dropdown
+    const pageSelect = document.getElementById("pl-page-topic-select");
+    if (pageSelect) {
+      pageSelect.addEventListener("change", (e) => {
+        currentTopicIndex = parseInt(e.target.value, 10) || 0;
+        renderPageTopicContent();
+        renderModalTopicContent();
+      });
+    }
+
+    // Modal Events
     const closeBtn = document.getElementById("problem-list-close-btn");
     const modalBackdrop = document.getElementById("problem-list-modal");
-    if (closeBtn) {
-      closeBtn.addEventListener("click", closeModal);
-    }
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
     if (modalBackdrop) {
       modalBackdrop.addEventListener("click", (e) => {
         if (e.target === modalBackdrop) closeModal();
@@ -308,31 +336,50 @@ const ProblemList = (() => {
     if (modalPrevBtn) modalPrevBtn.addEventListener("click", () => navigateTopic(-1));
     if (modalNextBtn) modalNextBtn.addEventListener("click", () => navigateTopic(1));
 
-    const topicSelect = document.getElementById("pl-topic-select");
-    if (topicSelect) {
-      topicSelect.addEventListener("change", (e) => {
+    const modalSelect = document.getElementById("pl-topic-select");
+    if (modalSelect) {
+      modalSelect.addEventListener("change", (e) => {
         currentTopicIndex = parseInt(e.target.value, 10) || 0;
-        renderCurrentTopic();
+        renderModalTopicContent();
+        renderPageTopicContent();
       });
     }
+  }
 
-    const searchInput = document.getElementById("pl-search-input");
-    if (searchInput) {
-      searchInput.addEventListener("input", (e) => {
-        searchQuery = e.target.value.toLowerCase().trim();
-        renderCurrentTopic();
-      });
+  function openPageView() {
+    isPageViewActive = true;
+    const pageContainer = document.getElementById("problem-list-page-container");
+    const monacoWrapper = document.getElementById("monaco-wrapper");
+    const outputPanel = document.getElementById("output-panel");
+
+    if (pageContainer) {
+      pageContainer.style.display = "flex";
+    }
+    if (monacoWrapper) {
+      monacoWrapper.style.display = "none";
+    }
+    if (outputPanel) {
+      outputPanel.style.display = "none";
     }
 
-    const diffChips = document.querySelectorAll(".pl-diff-chip");
-    diffChips.forEach((chip) => {
-      chip.addEventListener("click", (e) => {
-        diffChips.forEach((c) => c.classList.remove("active"));
-        chip.classList.add("active");
-        activeDifficulty = chip.getAttribute("data-diff") || "all";
-        renderCurrentTopic();
-      });
-    });
+    renderPageTopicContent();
+  }
+
+  function closePageView() {
+    isPageViewActive = false;
+    const pageContainer = document.getElementById("problem-list-page-container");
+    const monacoWrapper = document.getElementById("monaco-wrapper");
+    const outputPanel = document.getElementById("output-panel");
+
+    if (pageContainer) {
+      pageContainer.style.display = "none";
+    }
+    if (monacoWrapper) {
+      monacoWrapper.style.display = "block";
+    }
+    if (outputPanel) {
+      outputPanel.style.display = "flex";
+    }
   }
 
   function openModal() {
@@ -351,35 +398,109 @@ const ProblemList = (() => {
     }
   }
 
-  function navigateTopic(direction) {
-    currentTopicIndex += direction;
-    if (currentTopicIndex < 0) {
-      currentTopicIndex = dsaTopics.length - 1;
-    } else if (currentTopicIndex >= dsaTopics.length) {
-      currentTopicIndex = 0;
-    }
-    const topicSelect = document.getElementById("pl-topic-select");
-    if (topicSelect) topicSelect.value = String(currentTopicIndex);
-    renderCurrentTopic();
+  function navigateTopic(dir) {
+    currentTopicIndex += dir;
+    if (currentTopicIndex < 0) currentTopicIndex = dsaTopics.length - 1;
+    if (currentTopicIndex >= dsaTopics.length) currentTopicIndex = 0;
+
+    const pageSelect = document.getElementById("pl-page-topic-select");
+    const modalSelect = document.getElementById("pl-topic-select");
+    if (pageSelect) pageSelect.value = String(currentTopicIndex);
+    if (modalSelect) modalSelect.value = String(currentTopicIndex);
+
+    renderPageTopicContent();
+    renderModalTopicContent();
   }
 
-  function populateTopicDropdown() {
-    const topicSelect = document.getElementById("pl-topic-select");
-    if (!topicSelect) return;
-    topicSelect.innerHTML = "";
+  function populatePageTopicDropdown() {
+    const select = document.getElementById("pl-page-topic-select");
+    if (!select) return;
+    select.innerHTML = "";
     dsaTopics.forEach((topic, idx) => {
       const opt = document.createElement("option");
       opt.value = idx;
       opt.textContent = `${topic.number}. ${topic.title} (${topic.questions.length})`;
-      topicSelect.appendChild(opt);
+      select.appendChild(opt);
     });
   }
 
-  function renderCurrentTopic() {
+  function populateModalTopicDropdown() {
+    const select = document.getElementById("pl-topic-select");
+    if (!select) return;
+    select.innerHTML = "";
+    dsaTopics.forEach((topic, idx) => {
+      const opt = document.createElement("option");
+      opt.value = idx;
+      opt.textContent = `${topic.number}. ${topic.title} (${topic.questions.length})`;
+      select.appendChild(opt);
+    });
+  }
+
+  function renderPageTopicContent() {
     const topic = dsaTopics[currentTopicIndex];
     if (!topic) return;
 
-    // Render Banner / Takeaways
+    // Badges & Titles
+    const badgeEl = document.getElementById("pl-page-category-badge");
+    const titleEl = document.getElementById("pl-page-title-heading");
+    if (badgeEl) badgeEl.textContent = `Category #${topic.number}`;
+    if (titleEl) titleEl.textContent = topic.title;
+
+    // Banner & Takeaways
+    const bannerEl = document.getElementById("pl-page-banner");
+    if (bannerEl) {
+      let takeawaysList = topic.takeaways.map(t => `<li style="margin-bottom:3px;">${escapeHtml(t)}</li>`).join("");
+      bannerEl.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <span style="background:rgba(0,242,254,0.15); border:1px solid rgba(0,242,254,0.3); color:#00f2fe; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px;">PAGE ${currentTopicIndex + 1} OF ${dsaTopics.length}</span>
+          <h3 style="margin:0; font-size:18px; font-weight:700; color:#ffffff;">${escapeHtml(topic.title)}</h3>
+        </div>
+        <p style="font-size:13px; color:#cbd5e1; margin:0 0 12px 0;">${escapeHtml(topic.concept)}</p>
+        <div style="background:rgba(0,0,0,0.3); border:1px dashed rgba(255,255,255,0.15); border-radius:8px; padding:10px 14px;">
+          <strong style="color:#00f2fe; font-size:11.5px; display:block; margin-bottom:4px;">Key Takeaways &amp; Patterns:</strong>
+          <ul style="margin:0; padding-left:18px; font-size:12px; color:#94a3b8;">${takeawaysList}</ul>
+        </div>
+      `;
+    }
+
+    // Questions Table Rows
+    const tbody = document.getElementById("pl-page-questions-tbody");
+    if (!tbody) return;
+
+    let rowsHtml = topic.questions.map((q) => {
+      const lcUrl = getLeetCodeUrl(q);
+      const diffClass = q.difficulty.toLowerCase() === "easy" ? "diff-badge-easy" :
+                        q.difficulty.toLowerCase() === "medium" ? "diff-badge-medium" : "diff-badge-hard";
+      return `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <td style="padding:12px 16px; color:rgba(255,255,255,0.4); font-family:monospace;">${escapeHtml(q.num)}</td>
+          <td style="padding:12px 16px;">
+            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" style="color:#ffffff; font-weight:600; text-decoration:none;" onmouseover="this.style.color='#00f2fe'" onmouseout="this.style.color='#ffffff'">
+              ${escapeHtml(q.title)}
+            </a>
+          </td>
+          <td style="padding:12px 16px;"><span class="pl-lc-tag">LC #${q.lc}</span></td>
+          <td style="padding:12px 16px;"><span class="pl-diff-badge ${diffClass}">${q.difficulty}</span></td>
+          <td style="padding:12px 16px; color:rgba(255,255,255,0.7); font-size:12px;">${escapeHtml(q.pattern)}</td>
+          <td style="padding:12px 16px; text-align:center;">
+            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" class="btn-leetcode-practice" title="Practice on LeetCode">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="margin-right:4px; vertical-align:-1px;">
+                <path d="M13.5 3H21v7.5h-2V6.41l-9.79 9.8-1.42-1.42 9.8-9.79H13.5V3zM5 5h6v2H5v12h12v-6h2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 0 1 2-2z"/>
+              </svg>
+              Practice
+            </a>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    tbody.innerHTML = rowsHtml;
+  }
+
+  function renderModalTopicContent() {
+    const topic = dsaTopics[currentTopicIndex];
+    if (!topic) return;
+
     const bannerEl = document.getElementById("pl-topic-banner");
     if (bannerEl) {
       let takeawaysHtml = topic.takeaways.map(t => `<li>${escapeHtml(t)}</li>`).join("");
@@ -396,31 +517,10 @@ const ProblemList = (() => {
       `;
     }
 
-    // Filter questions
-    let filteredQuestions = topic.questions.filter((q) => {
-      const matchesDiff = (activeDifficulty === "all") || (q.difficulty.toLowerCase() === activeDifficulty.toLowerCase());
-      const matchesQuery = !searchQuery || 
-        q.title.toLowerCase().includes(searchQuery) || 
-        String(q.lc).includes(searchQuery) ||
-        q.pattern.toLowerCase().includes(searchQuery);
-      return matchesDiff && matchesQuery;
-    });
-
     const tbody = document.getElementById("pl-questions-tbody");
     if (!tbody) return;
 
-    if (filteredQuestions.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" class="pl-no-results">
-            No matching problems found for "${escapeHtml(searchQuery)}" with filter "${escapeHtml(activeDifficulty)}".
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    let rowsHtml = filteredQuestions.map((q) => {
+    let rowsHtml = topic.questions.map((q) => {
       const lcUrl = getLeetCodeUrl(q);
       const diffClass = q.difficulty.toLowerCase() === "easy" ? "diff-badge-easy" :
                         q.difficulty.toLowerCase() === "medium" ? "diff-badge-medium" : "diff-badge-hard";
@@ -428,7 +528,7 @@ const ProblemList = (() => {
         <tr>
           <td class="pl-cell-num">${escapeHtml(q.num)}</td>
           <td class="pl-cell-title">
-            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" class="pl-problem-link" title="Open ${escapeHtml(q.title)} on LeetCode">
+            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" class="pl-problem-link">
               ${escapeHtml(q.title)}
             </a>
           </td>
@@ -436,9 +536,9 @@ const ProblemList = (() => {
           <td class="pl-cell-diff"><span class="pl-diff-badge ${diffClass}">${q.difficulty}</span></td>
           <td class="pl-cell-pattern">${escapeHtml(q.pattern)}</td>
           <td class="pl-cell-action">
-            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-leetcode-practice" title="Practice LC #${q.lc} directly on LeetCode">
+            <a href="${lcUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-leetcode-practice">
               <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="margin-right:4px;">
-                <path d="M13.5 3H21v7.5h-2V6.41l-9.79 9.8-1.42-1.42 9.8-9.79H13.5V3zM5 5h6v2H5v12h12v-6h2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/>
+                <path d="M13.5 3H21v7.5h-2V6.41l-9.79 9.8-1.42-1.42 9.8-9.79H13.5V3zM5 5h6v2H5v12h12v-6h2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 0 1 2-2z"/>
               </svg>
               Practice
             </a>
@@ -464,6 +564,8 @@ const ProblemList = (() => {
 
   return {
     init,
+    openPageView,
+    closePageView,
     openModal,
     closeModal,
     navigateTopic,

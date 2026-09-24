@@ -239,22 +239,23 @@
 
       <section class="panel editor-panel" id="editor-panel">
         <div class="panel-header editor-toolbar">
-          <div class="editor-header-left" style="display: flex; align-items: center; gap: 14px;">
-            <div class="problem-list-nav-bar" id="problem-list-nav-bar">
-              <button type="button" class="problem-list-btn" id="open-problem-list-btn" title="Click to view DSA Problem List & Practice on LeetCode">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16" class="problem-list-icon">
+          <div class="editor-header-left" style="display: flex; align-items: center; gap: 12px;">
+            <!-- Problem List Button Bar (Styled in Dark Theme) -->
+            <div class="problem-list-nav-bar" id="problem-list-nav-bar" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 6px; padding: 3px 8px; box-sizing: border-box;">
+              <button type="button" class="problem-list-btn" id="open-problem-list-btn" title="Click to view DSA Problem List & Practice on LeetCode" style="display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; color: #ffffff; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 2px 4px; outline: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2.2" width="15" height="15" style="vertical-align: middle;">
                   <line x1="8" y1="6" x2="21" y2="6"/>
                   <line x1="8" y1="12" x2="21" y2="12"/>
                   <line x1="8" y1="18" x2="21" y2="18"/>
-                  <circle cx="4" cy="6" r="1.5" fill="currentColor"/>
-                  <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
-                  <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+                  <circle cx="4" cy="6" r="1.5" fill="#00f2fe"/>
+                  <circle cx="4" cy="12" r="1.5" fill="#00f2fe"/>
+                  <circle cx="4" cy="18" r="1.5" fill="#00f2fe"/>
                 </svg>
-                <span class="problem-list-text">Problem List</span>
+                <span style="color: #ffffff; font-weight: 600; letter-spacing: 0.2px;">Problem List</span>
               </button>
-              <div class="problem-list-quick-nav">
-                <button type="button" class="nav-arrow-btn" id="prev-topic-btn" title="Previous Topic">&lt;</button>
-                <button type="button" class="nav-arrow-btn" id="next-topic-btn" title="Next Topic">&gt;</button>
+              <div style="display: inline-flex; align-items: center; gap: 2px; border-left: 1px solid rgba(255, 255, 255, 0.2); padding-left: 6px; margin-left: 2px;">
+                <button type="button" class="nav-arrow-btn" id="prev-topic-btn" title="Previous Topic Page" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; font-weight: 700; cursor: pointer; padding: 1px 6px; border-radius: 4px; outline: none;">&lt;</button>
+                <button type="button" class="nav-arrow-btn" id="next-topic-btn" title="Next Topic Page" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; font-weight: 700; cursor: pointer; padding: 1px 6px; border-radius: 4px; outline: none;">&gt;</button>
               </div>
             </div>
 
@@ -273,6 +274,59 @@
             </button>
           </div>
         </div>
+
+        <!-- Problem List Page View (Rendered inside Editor Panel) -->
+        <div class="problem-list-page-container" id="problem-list-page-container" style="display: none; flex-direction: column; flex: 1; background: #0b0f17; color: #e2e8f0; overflow-y: auto;">
+          <!-- Page View Header Bar -->
+          <div class="pl-page-header-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: #121824; border-bottom: 1px solid rgba(255, 255, 255, 0.1); flex-wrap: wrap; gap: 10px;">
+            <button type="button" class="btn btn-secondary back-to-dashboard-btn" id="back-to-dashboard-btn" style="display: inline-flex; align-items: center; gap: 7px; background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16">
+                <line x1="19" y1="12" x2="5" y2="12"/>
+                <polyline points="12 19 5 12 12 5"/>
+              </svg>
+              <span>Back to Dashboard</span>
+            </button>
+
+            <div class="pl-page-header-center" style="display: flex; align-items: center; gap: 10px;">
+              <span style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #c084fc; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;" id="pl-page-category-badge">Category #1</span>
+              <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;" id="pl-page-title-heading">Arrays &amp; Hashing</h3>
+            </div>
+
+            <div class="pl-page-nav-group" style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn btn-secondary compact" id="page-prev-btn" style="padding: 4px 10px; font-size: 11.5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #fff; cursor: pointer; border-radius: 6px;">&larr; Prev Page</button>
+              <select id="pl-page-topic-select" class="control-select" style="background: #1a2230; color: #00f2fe; border: 1px solid rgba(0,242,254,0.3); font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 6px;" aria-label="Select DSA Topic Page"></select>
+              <button type="button" class="btn btn-secondary compact" id="page-next-btn" style="padding: 4px 10px; font-size: 11.5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #fff; cursor: pointer; border-radius: 6px;">Next Page &rarr;</button>
+            </div>
+          </div>
+
+          <!-- Page View Body Content -->
+          <div class="pl-page-body" style="padding: 20px; flex: 1; overflow-y: auto;">
+            <!-- Topic Banner Card -->
+            <div class="pl-page-banner" id="pl-page-banner" style="background: linear-gradient(135deg, rgba(16, 24, 38, 0.95), rgba(24, 34, 52, 0.95)); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
+              <!-- Dynamic banner -->
+            </div>
+
+            <!-- Questions Table -->
+            <div class="pl-page-table-wrapper" style="background: #121824; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; overflow: hidden;">
+              <table class="pl-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #182030; color: rgba(255, 255, 255, 0.6); font-size: 11px; text-transform: uppercase;">
+                    <th style="padding: 10px 16px; width: 50px;">#</th>
+                    <th style="padding: 10px 16px;">Problem Title</th>
+                    <th style="padding: 10px 16px; width: 90px;">LC #</th>
+                    <th style="padding: 10px 16px; width: 100px;">Difficulty</th>
+                    <th style="padding: 10px 16px;">Key Pattern</th>
+                    <th style="padding: 10px 16px; width: 130px; text-align: center;">LeetCode Link</th>
+                  </tr>
+                </thead>
+                <tbody id="pl-page-questions-tbody">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <div class="monaco-wrapper" id="monaco-wrapper">
           <div id="monaco-editor"></div>
         </div>
